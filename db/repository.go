@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	_ "modernc.org/sqlite"
 )
 
 type Repository struct {

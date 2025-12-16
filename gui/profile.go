@@ -21,7 +21,7 @@ type ProfilePage struct {
 	FirstName *widget.Entry
 	LastName  *widget.Entry
 	Middle *widget.Entry
-	EmpID *widget.DateEntry
+	EmpID *widget.Entry
 	Dept * widget.Entry
 	Title *widget.Entry
 	Rate *widget.Entry
@@ -118,7 +118,7 @@ func (p * ProfilePage) initWidgets() {
 	p.FirstName = widget.NewEntry()
 	p.LastName = widget.NewEntry()
 	p.Middle = widget.NewEntry()
-	p.EmpID = widget.NewDateEntry()
+	p.EmpID = widget.NewEntry()
 	p.Dept = widget.NewEntry()
 	p.Title = widget.NewEntry()
 	p.Rate = widget.NewEntry()
