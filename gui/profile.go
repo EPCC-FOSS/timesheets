@@ -14,24 +14,24 @@ import (
 )
 
 type ProfilePage struct {
-	Repo *db.Repository
+	Repo   *db.Repository
 	Window fyne.Window
 
 	// Form widgets
 	FirstName *widget.Entry
 	LastName  *widget.Entry
-	Middle *widget.Entry
-	EmpID *widget.Entry
-	Dept * widget.Entry
-	Title *widget.Entry
-	Rate *widget.Entry
-	
+	Middle    *widget.Entry
+	EmpID     *widget.Entry
+	Dept      *widget.Entry
+	Title     *widget.Entry
+	Rate      *widget.Entry
+
 	//Dynamic fields
 	ExtraGroup *fyne.Container
-	Fund *widget.Entry
-	Org *widget.Entry
-	Acct *widget.Entry
-	Prog *widget.Entry
+	Fund       *widget.Entry
+	Org        *widget.Entry
+	Acct       *widget.Entry
+	Prog       *widget.Entry
 
 	//Type selector
 	TypeSelect *widget.Select
@@ -47,10 +47,10 @@ type ProfilePage struct {
 	IsLocked bool
 }
 
-func NewProfilePage(win fyne.Window, repo *db.Repository) *ProfilePage{
+func NewProfilePage(win fyne.Window, repo *db.Repository) *ProfilePage {
 	p := &ProfilePage{
-		Repo: repo,
-		Window: win,
+		Repo:           repo,
+		Window:         win,
 		ScheduleInputs: make(map[int]*widget.Entry),
 	}
 	p.initWidgets()
@@ -101,7 +101,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 
 	// Assemble layout
 	content := container.NewVBox(
-		widget.NewLabelWithStyle("Employee Profile", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, TabWidth:  2}),
+		widget.NewLabelWithStyle("Employee Profile", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, TabWidth: 2}),
 		commonForm,
 		p.ExtraGroup,
 		widget.NewSeparator(),
@@ -113,7 +113,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 }
 
 // Create empty widgets
-func (p * ProfilePage) initWidgets() {
+func (p *ProfilePage) initWidgets() {
 	//Common fields
 	p.FirstName = widget.NewEntry()
 	p.LastName = widget.NewEntry()
@@ -130,12 +130,22 @@ func (p * ProfilePage) initWidgets() {
 	p.Acct = widget.NewEntry()
 	p.Prog = widget.NewEntry()
 
+	// Ensure ExtraGroup is initialized so callbacks can safely Show/Hide it
+	p.ExtraGroup = container.NewVBox()
+	p.ExtraGroup.Hide()
+
+	// Initialize control buttons so lockForm can safely call methods
+	// These will be replaced with functional buttons in BuildUI.
+	p.SaveButton = widget.NewButton("Save Profile", nil)
+	p.EditButton = widget.NewButton("Edit Profile", nil)
+	p.EditButton.Disable()
+
 	//Dropdown logic
 	p.TypeSelect = widget.NewSelect([]string{
 		string(models.TypeFullTime),
 		string(models.TypePartTime),
 		string(models.TypeWorkStudy),
-	}, func (selected string) {
+	}, func(selected string) {
 		// Show extra fields for pt  and ft
 		if selected == string(models.TypeWorkStudy) {
 			p.ExtraGroup.Hide()
@@ -147,7 +157,7 @@ func (p * ProfilePage) initWidgets() {
 
 func (p *ProfilePage) LoadData() {
 	profile, err := p.Repo.GetProfile()
-	if err !=nil {
+	if err != nil {
 		dialog.ShowError(err, p.Window)
 		return
 	}
@@ -187,7 +197,7 @@ func (p *ProfilePage) LoadData() {
 	p.lockForm()
 }
 
-func (p * ProfilePage) saveData() {
+func (p *ProfilePage) saveData() {
 	// Parse hourly rate
 	var rate float64
 	fmt.Sscanf(p.Rate.Text, "%f", &rate)
@@ -210,7 +220,7 @@ func (p * ProfilePage) saveData() {
 			if len(times) == 2 {
 
 				// Add to ranges
-				ranges = append(ranges, models.TimeRange {
+				ranges = append(ranges, models.TimeRange{
 					Start: strings.TrimSpace(times[0]),
 					End:   strings.TrimSpace(times[1]),
 				})
@@ -226,19 +236,19 @@ func (p * ProfilePage) saveData() {
 
 	// Create profile model
 	prof := models.Profile{
-		FirstName: p.FirstName.Text,
-		LastName: p.LastName.Text,
+		FirstName:     p.FirstName.Text,
+		LastName:      p.LastName.Text,
 		MiddleInitial: p.Middle.Text,
-		EmployeeID: p.EmpID.Text,
-		Department: p.Dept.Text,
-		Title: p.Title.Text,
-		Rate: rate,
-		Type: models.EmployeeType(p.TypeSelect.Selected),
-		Fund: p.Fund.Text,
-		Org: p.Org.Text,
-		Acct: p.Acct.Text,
-		Prog: p.Prog.Text,
-		Schedule: scheduleMap,
+		EmployeeID:    p.EmpID.Text,
+		Department:    p.Dept.Text,
+		Title:         p.Title.Text,
+		Rate:          rate,
+		Type:          models.EmployeeType(p.TypeSelect.Selected),
+		Fund:          p.Fund.Text,
+		Org:           p.Org.Text,
+		Acct:          p.Acct.Text,
+		Prog:          p.Prog.Text,
+		Schedule:      scheduleMap,
 	}
 
 	// Error saving data
@@ -278,10 +288,10 @@ func (p *ProfilePage) lockForm() {
 	}
 }
 
-func (p * ProfilePage) unlockForm() {
+func (p *ProfilePage) unlockForm() {
 	//General locking
 	p.IsLocked = false
-	
+
 	//Button states
 	p.SaveButton.Enable()
 	p.EditButton.Disable()
