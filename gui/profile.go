@@ -7,10 +7,13 @@ import (
 	"calendar_utility_node_for_timesheets/db"
 	"calendar_utility_node_for_timesheets/models"
 
+	"image/color"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"fyne.io/fyne/v2/canvas"
 )
 
 type ProfilePage struct {
@@ -57,70 +60,20 @@ func NewProfilePage(win fyne.Window, repo *db.Repository) *ProfilePage {
 	return p
 }
 
-func (p *ProfilePage) BuildUI() fyne.CanvasObject {
-
-	//Common fields
-	commonForm := widget.NewForm(
-		widget.NewFormItem("First Name", p.FirstName),
-		widget.NewFormItem("Last Name", p.LastName),
-		widget.NewFormItem("Middle Initial", p.Middle),
-		widget.NewFormItem("Employee ID", p.EmpID),
-		widget.NewFormItem("Department", p.Dept),
-		widget.NewFormItem("Title", p.Title),
-		widget.NewFormItem("Hourly Rate", p.Rate),
-		widget.NewFormItem("Employee Type", p.TypeSelect),
-	)
-
-	// Dynamic fields container
-	extraForm := widget.NewForm(
-		widget.NewFormItem("Fund", p.Fund),
-		widget.NewFormItem("Org", p.Org),
-		widget.NewFormItem("Account", p.Acct),
-		widget.NewFormItem("Program", p.Prog),
-	)
-	p.ExtraGroup = container.NewVBox(extraForm)
-	p.ExtraGroup.Hide() // hide extra fields initially
-
-	//Schedule fields
-	days := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
-	scheduleContainer := container.NewVBox(
-		widget.NewLabelWithStyle("Standard Schedule (e.g. 08:00-12:00 or 13:00-17:00)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-	)
-
-	for i, dayName := range days {
-		entry := widget.NewEntry()
-		entry.SetPlaceHolder("e.g. 09:00-17:00")
-		p.ScheduleInputs[i] = entry
-		scheduleContainer.Add(widget.NewForm(widget.NewFormItem(dayName, entry)))
-	}
-
-	// Buttons
-	p.SaveButton = widget.NewButton("Save Profile", p.saveData)
-	p.EditButton = widget.NewButton("Edit Profile", p.unlockForm)
-	p.EditButton.Disable()
-
-	// Assemble layout
-	content := container.NewVBox(
-		widget.NewLabelWithStyle("Employee Profile", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, TabWidth: 2}),
-		commonForm,
-		p.ExtraGroup,
-		widget.NewSeparator(),
-		scheduleContainer,
-		container.NewHBox(p.SaveButton, p.EditButton),
-	)
-
-	return container.NewScroll(content)
-}
-
 // Create empty widgets
 func (p *ProfilePage) initWidgets() {
 	//Common fields
 	p.FirstName = widget.NewEntry()
+	p.FirstName.SetPlaceHolder("John")
 	p.LastName = widget.NewEntry()
+	p.LastName.SetPlaceHolder("Doe")
 	p.Middle = widget.NewEntry()
 	p.EmpID = widget.NewEntry()
+	p.EmpID.SetPlaceHolder("888888888")
 	p.Dept = widget.NewEntry()
+	p.Dept.SetPlaceHolder("Student Success")
 	p.Title = widget.NewEntry()
+	p.Title.SetPlaceHolder("Tutor")
 	p.Rate = widget.NewEntry()
 	p.Rate.SetPlaceHolder("9.67")
 
@@ -131,16 +84,17 @@ func (p *ProfilePage) initWidgets() {
 	p.Prog = widget.NewEntry()
 
 	// Ensure ExtraGroup is initialized so callbacks can safely Show/Hide it
-	p.ExtraGroup = container.NewVBox()
+	p.ExtraGroup = container.NewVBox(
+		widget.NewForm(
+			widget.NewFormItem("Fund", p.Fund),
+			widget.NewFormItem("Org", p.Org),
+			widget.NewFormItem("Account", p.Acct),
+			widget.NewFormItem("Program", p.Prog),
+		),
+	)
 	p.ExtraGroup.Hide()
 
-	// Initialize control buttons so lockForm can safely call methods
-	// These will be replaced with functional buttons in BuildUI.
-	p.SaveButton = widget.NewButton("Save Profile", nil)
-	p.EditButton = widget.NewButton("Edit Profile", nil)
-	p.EditButton.Disable()
-
-	//Dropdown logic
+		//Dropdown logic
 	p.TypeSelect = widget.NewSelect([]string{
 		string(models.TypeFullTime),
 		string(models.TypePartTime),
@@ -153,6 +107,81 @@ func (p *ProfilePage) initWidgets() {
 			p.ExtraGroup.Show()
 		}
 	})
+
+	//Schedule inputs initialization
+	for i:= 0; i < 7; i++{
+		entry:= widget.NewEntry()
+		entry.SetPlaceHolder("08:00-12:00, 13:00-17:00")
+		p.ScheduleInputs[i] = entry
+	}
+
+	// Initialize control buttons so lockForm can safely call methods
+	// These will be replaced with functional buttons in BuildUI.
+	p.SaveButton = widget.NewButtonWithIcon("Save Profile", theme.DocumentSaveIcon(), p.saveData)
+	p.SaveButton.Importance = widget.HighImportance
+	p.EditButton = widget.NewButtonWithIcon("Edit Profile", theme.DocumentCreateIcon(), p.unlockForm)
+	p.EditButton.Disable()
+}
+
+func (p *ProfilePage) BuildUI() fyne.CanvasObject {
+
+	//Personal info form
+	personalForm := widget.NewForm(
+		widget.NewFormItem("First Name", p.FirstName),
+		widget.NewFormItem("Last Name", p.LastName),
+		widget.NewFormItem("Middle Initial", p.Middle),
+		widget.NewFormItem("Employee ID", p.EmpID),
+	)
+	personalCard := widget.NewCard("Personal Information", "", personalForm)
+
+	//Common fields
+	jobForm := widget.NewForm(
+		widget.NewFormItem("Department", p.Dept),
+		widget.NewFormItem("Title", p.Title),
+	)
+
+	rateTypeGrid := container.NewGridWithColumns(2,
+		widget.NewForm(widget.NewFormItem("Hourly Rate", p.Rate)),
+		widget.NewForm(widget.NewFormItem("Employee Type", p.TypeSelect)),
+	)
+
+	jobCard := widget.NewCard("Job Details", "", container.NewVBox(
+		jobForm,
+		rateTypeGrid,
+		widget.NewSeparator(),
+		p.ExtraGroup,
+	))
+
+	//Schedule form
+
+	days := []string{"MMonday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+	scheduleForm := widget.NewForm()
+
+	for i, day := range days {
+		scheduleForm.Append(day, p.ScheduleInputs[i])
+	}
+
+	scheduleCard := widget.NewCard("Standard Schedule", "(e.g. 09:00-17:00, 10:00-15:00)", scheduleForm)
+
+	// Buttons
+	buttonRow := container.NewGridWithColumns(2, p.SaveButton, p.EditButton)
+
+	// Assembled layout for profile
+	content := container.NewVBox(
+		personalCard,
+		jobCard,
+		scheduleCard,
+		layoutSpacer(10),
+		buttonRow,
+	)
+
+	return container.NewPadded(container.NewScroll(content))
+}
+
+func layoutSpacer(height float32) fyne.CanvasObject {
+	spacer := canvas.NewRectangle(color.Transparent)
+	spacer.SetMinSize(fyne.NewSize(0, height))
+	return spacer
 }
 
 func (p *ProfilePage) LoadData() {
@@ -173,6 +202,7 @@ func (p *ProfilePage) LoadData() {
 	p.Dept.SetText(profile.Department)
 	p.Title.SetText(profile.Title)
 	p.Rate.SetText(fmt.Sprintf("%.2f", profile.Rate))
+	
 	p.TypeSelect.SetSelected(string(profile.Type))
 
 	// Populate extra fields
@@ -218,7 +248,6 @@ func (p *ProfilePage) saveData() {
 
 			// Validate time range
 			if len(times) == 2 {
-
 				// Add to ranges
 				ranges = append(ranges, models.TimeRange{
 					Start: strings.TrimSpace(times[0]),
@@ -310,6 +339,7 @@ func (p *ProfilePage) unlockForm() {
 	p.Acct.Enable()
 	p.Prog.Enable()
 
+	// Schedule fields
 	for _, entry := range p.ScheduleInputs {
 		entry.Enable()
 	}
