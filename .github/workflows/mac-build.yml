@@ -2,13 +2,15 @@ name: Build macOS Binary
 
 on:
     push:
+        tags:
+            - "v*"
         branches:
             - 'version*'
 
 jobs:
     build:
         name: Build for macOS
-        runs-on: ubuntu-latest
+        runs-on: macos-latest # FIX: Use a real Mac to build Mac apps
 
         steps:
             - name: Checkout code
@@ -19,43 +21,55 @@ jobs:
               with:
                 go-version: 'stable'
 
-            # Install fyne-cross tool
-            - name: Install Fyne-Cross
-              run: go install github.com/fyne-io/fyne-cross@latest
+            # FIX: Use the native Fyne CLI instead of fyne-cross
+            # This works because the runner already has Xcode/Clang installed for SQLite.
+            - name: Install Fyne CLI
+              run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
-            # Run fyne-cross as a command
-            - name: Build for macOS
+            - name: Build macOS App
               run: |
-                export PATH=$(go env GOPATH)/bin:$PATH
-                fyne-cross darwin -arch=amd64
+                # Ensure CGO is on for SQLite
+                export CGO_ENABLED=1
+                
+                # 'fyne package' reads your FyneApp.toml automatically
+                $(go env GOPATH)/bin/fyne package -os darwin -icon Icon.png
 
             - name: Move and Rename Output Binary
               shell: bash
               run: |
                 mkdir -p bins/mac
                 
-                # Extract version from branch name (e.g., version1.0.5 -> 1.0.5)
+                # Extract version
                 RAW_BRANCH="${{ github.ref_name }}"
                 VERSION="${RAW_BRANCH#version}"
-                
                 echo "Detected Version: $VERSION"
 
-                # fyne-cross outputs to 'fyne-cross/bin/darwin-amd64'
-                # We search for any .app or archive file in that folder
-                SOURCE_APP=$(find fyne-cross/bin/darwin-amd64 -name "*.app" -o -name "*.tar.xz" | head -n 1)
+                # Find the generated .app bundle
+                # Note: On macOS, the output is a folder ending in .app
+                SOURCE_APP=$(find . -maxdepth 1 -name "*.app" | head -n 1)
 
-                if [ -f "$SOURCE_APP" ] || [ -d "$SOURCE_APP" ]; then
+                if [ -d "$SOURCE_APP" ]; then
                         TARGET="bins/mac/calendar_${VERSION}.app"
                         mv "$SOURCE_APP" "$TARGET"
-                        echo "✅ Success: Moved binary to $TARGET"
+                        echo "✅ Success: Moved app to $TARGET"
                 else
-                        echo "❌ Error: No .app or archive found in fyne-cross output!"
+                        echo "❌ Error: No .app bundle found!"
                         exit 1
                 fi
 
+            # Note: This uploads the .app folder as a zip automatically
             - name: Upload Artifact
               uses: actions/upload-artifact@v4
               with:
                 name: calendar-macos-${{ github.ref_name }}
-                path: bins/mac/calendar_*
+                path: bins/mac/calendar_*.app
                 retention-days: 10
+            
+            - name: Release
+              uses: softprops/action-gh-release@v2
+              if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
+              with:
+                tag_name: ${{ github.ref_name }}
+                files: bins/mac/*.app
+                draft: false
+                prerelease: false
