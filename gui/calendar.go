@@ -1,5 +1,5 @@
 package gui
-
+/*
 import (
 	"fmt"
 	"time"
@@ -99,9 +99,8 @@ func (c * CalendarPage) Refresh() {
 	c.Profile = prof
 
 	// Check if existing timesheet for month
-	existingSheet, _: c.Repo.Get
 }
 
 func (c *CalendarPage) exportData() {
 	dialog.ShowInformation("Export", "Export functionality not implemented yet.", c.Window)
-}
+}*/
