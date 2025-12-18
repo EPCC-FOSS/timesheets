@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     name: Build for macOS
-    runs-on: macos-latest # FIX: Use a real Mac to build Mac apps
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
@@ -24,55 +24,60 @@ jobs:
         with:
           go-version: 'stable'
 
-      # FIX: Use the native Fyne CLI instead of fyne-cross
-      # This works because the runner already has Xcode/Clang installed for SQLite.
+      # FIX 1: Install the new, non-deprecated Fyne tool
       - name: Install Fyne CLI
-        run: go install fyne.io/fyne/v2/cmd/fyne@latest
+        run: go install fyne.io/tools/cmd/fyne@latest
 
       - name: Build macOS App
         run: |
-          # Ensure CGO is on for SQLite
           export CGO_ENABLED=1
           
-          # 'fyne package' reads your FyneApp.toml automatically
+          # FIX 2: Ensure Icon.png exists in your repo! 
+          # If this step fails, it means you haven't pushed 'Icon.png' to GitHub.
+          # We use the new tool path here.
           $(go env GOPATH)/bin/fyne package -os darwin -icon Icon.png
 
       - name: Move and Rename Output Binary
         shell: bash
         run: |
           mkdir -p bins/mac
-          
-          # Extract version
           RAW_BRANCH="${{ github.ref_name }}"
           VERSION="${RAW_BRANCH#version}"
-          echo "Detected Version: $VERSION"
-
-          # Find the generated .app bundle
-          # Note: On macOS, the output is a folder ending in .app
+          
+          # Find the .app folder
           SOURCE_APP=$(find . -maxdepth 1 -name "*.app" | head -n 1)
 
           if [ -d "$SOURCE_APP" ]; then
-            TARGET="bins/mac/calendar_${VERSION}.app"
-            mv "$SOURCE_APP" "$TARGET"
-            echo "✅ Success: Moved app to $TARGET"
+            APP_NAME="calendar_${VERSION}.app"
+            TARGET_DIR="bins/mac"
+            
+            # Move it to bins/mac/calendar_1.0.app
+            mv "$SOURCE_APP" "$TARGET_DIR/$APP_NAME"
+            
+            # FIX 3: ZIP THE APP. GitHub Releases cannot accept raw .app folders.
+            cd "$TARGET_DIR"
+            zip -r "calendar_${VERSION}_mac.zip" "$APP_NAME"
+            
+            echo "✅ Zipped app to bins/mac/calendar_${VERSION}_mac.zip"
           else
             echo "❌ Error: No .app bundle found!"
             exit 1
           fi
 
-      # Note: This uploads the .app folder as a zip automatically
+      # Upload the ZIP to Artifacts (not the .app folder)
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: calendar-macos-${{ github.ref_name }}
-          path: bins/mac/calendar_*.app
+          path: bins/mac/*.zip
           retention-days: 10
       
+      # Upload the ZIP to Releases
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
         with:
           tag_name: ${{ github.ref_name }}
-          files: bins/mac/*.app
+          files: bins/mac/*.zip  # <--- MUST be the .zip file
           draft: false
           prerelease: false
