@@ -1,8 +1,13 @@
 name: Build Windows Binary
 on:
   push:
+    tags:
+      - "v*"
     branches:
       - 'version*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -45,12 +50,12 @@ jobs:
           SOURCE_EXE=$(find fyne-cross/bin/windows-amd64 -name "*.exe" | head -n 1)
 
           if [ -f "$SOURCE_EXE" ]; then
-             TARGET="bins/win/calendar_${VERSION}.exe"
-             mv "$SOURCE_EXE" "$TARGET"
-             echo "✅ Success: Moved binary to $TARGET"
+            TARGET="bins/win/calendar_${VERSION}.exe"
+            mv "$SOURCE_EXE" "$TARGET"
+            echo "✅ Success: Moved binary to $TARGET"
           else
-             echo "❌ Error: No .exe file found in fyne-cross output!"
-             exit 1
+            echo "❌ Error: No .exe file found in fyne-cross output!"
+            exit 1
           fi
 
       - name: Upload Artifact

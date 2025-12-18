@@ -1,75 +1,78 @@
 name: Build macOS Binary
 
 on:
-    push:
-        tags:
-            - "v*"
-        branches:
-            - 'version*'
+  push:
+    tags:
+      - "v*"
+    branches:
+      - 'version*'
+
+permissions:
+  contents: write
 
 jobs:
-    build:
-        name: Build for macOS
-        runs-on: macos-latest # FIX: Use a real Mac to build Mac apps
+  build:
+    name: Build for macOS
+    runs-on: macos-latest # FIX: Use a real Mac to build Mac apps
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Go
-              uses: actions/setup-go@v5
-              with:
-                go-version: 'stable'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
 
-            # FIX: Use the native Fyne CLI instead of fyne-cross
-            # This works because the runner already has Xcode/Clang installed for SQLite.
-            - name: Install Fyne CLI
-              run: go install fyne.io/fyne/v2/cmd/fyne@latest
+      # FIX: Use the native Fyne CLI instead of fyne-cross
+      # This works because the runner already has Xcode/Clang installed for SQLite.
+      - name: Install Fyne CLI
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
-            - name: Build macOS App
-              run: |
-                # Ensure CGO is on for SQLite
-                export CGO_ENABLED=1
-                
-                # 'fyne package' reads your FyneApp.toml automatically
-                $(go env GOPATH)/bin/fyne package -os darwin -icon Icon.png
+      - name: Build macOS App
+        run: |
+          # Ensure CGO is on for SQLite
+          export CGO_ENABLED=1
+          
+          # 'fyne package' reads your FyneApp.toml automatically
+          $(go env GOPATH)/bin/fyne package -os darwin -icon Icon.png
 
-            - name: Move and Rename Output Binary
-              shell: bash
-              run: |
-                mkdir -p bins/mac
-                
-                # Extract version
-                RAW_BRANCH="${{ github.ref_name }}"
-                VERSION="${RAW_BRANCH#version}"
-                echo "Detected Version: $VERSION"
+      - name: Move and Rename Output Binary
+        shell: bash
+        run: |
+          mkdir -p bins/mac
+          
+          # Extract version
+          RAW_BRANCH="${{ github.ref_name }}"
+          VERSION="${RAW_BRANCH#version}"
+          echo "Detected Version: $VERSION"
 
-                # Find the generated .app bundle
-                # Note: On macOS, the output is a folder ending in .app
-                SOURCE_APP=$(find . -maxdepth 1 -name "*.app" | head -n 1)
+          # Find the generated .app bundle
+          # Note: On macOS, the output is a folder ending in .app
+          SOURCE_APP=$(find . -maxdepth 1 -name "*.app" | head -n 1)
 
-                if [ -d "$SOURCE_APP" ]; then
-                        TARGET="bins/mac/calendar_${VERSION}.app"
-                        mv "$SOURCE_APP" "$TARGET"
-                        echo "✅ Success: Moved app to $TARGET"
-                else
-                        echo "❌ Error: No .app bundle found!"
-                        exit 1
-                fi
+          if [ -d "$SOURCE_APP" ]; then
+            TARGET="bins/mac/calendar_${VERSION}.app"
+            mv "$SOURCE_APP" "$TARGET"
+            echo "✅ Success: Moved app to $TARGET"
+          else
+            echo "❌ Error: No .app bundle found!"
+            exit 1
+          fi
 
-            # Note: This uploads the .app folder as a zip automatically
-            - name: Upload Artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: calendar-macos-${{ github.ref_name }}
-                path: bins/mac/calendar_*.app
-                retention-days: 10
-            
-            - name: Release
-              uses: softprops/action-gh-release@v2
-              if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
-              with:
-                tag_name: ${{ github.ref_name }}
-                files: bins/mac/*.app
-                draft: false
-                prerelease: false
+      # Note: This uploads the .app folder as a zip automatically
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-macos-${{ github.ref_name }}
+          path: bins/mac/calendar_*.app
+          retention-days: 10
+      
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: bins/mac/*.app
+          draft: false
+          prerelease: false
