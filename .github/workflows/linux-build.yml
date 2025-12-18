@@ -1,0 +1,55 @@
+name: Build Linux Binary
+
+on:
+    push:
+        branches:
+            - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+
+jobs:
+    build:
+        name: Build for Linux
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4 # Updated to v4 (recommended)
+
+            - name: Build with Fyne-Cross
+              uses: fyne-io/fyne-cross@v2 # FIX: Changed from fyne.io to fyne-io
+              with:
+                target: 'linux'
+                arch: 'amd64'
+
+            - name: Move and Rename Output Binary
+              shell: bash
+              run: |
+                mkdir -p bins/linux
+
+                # 1. Get the branch name directly (e.g., 'version1.0.5')
+                RAW_BRANCH="${{ github.ref_name }}"
+                
+                # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
+                # The ${VAR#prefix} syntax removes "version" from the start of the string
+                VERSION="${RAW_BRANCH#version}"
+                
+                echo "Detected Branch: $RAW_BRANCH"
+                echo "Extracted Version: $VERSION"
+
+                # 3. Find the built binary dynamically
+                SOURCE_BIN=$(find fyne-cross/bin/linux-amd64 -type f -executable | head -n 1)
+
+                if [ -f "$SOURCE_BIN" ]; then
+                        TARGET="bins/linux/calendar_${VERSION}"
+                        mv "$SOURCE_BIN" "$TARGET"
+                        echo "✅ Success: Moved binary to $TARGET"
+                else
+                        echo "❌ Error: No executable file found in fyne-cross output!"
+                        exit 1
+                fi
+
+            - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: calendar-linux-${{ github.ref_name }} # Includes version in zip name
+                path: bins/linux/calendar_*
+                retention-days: 30

@@ -1,0 +1,53 @@
+name: Build macOS Binary
+on:
+    push:
+        branches:
+            - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+
+jobs:
+    build:
+        name: Build for macOS
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Build with Fyne-Cross
+              uses: fyne-io/fyne-cross@v2
+              with:
+                target: 'darwin'
+                arch: 'amd64'
+
+            - name: Move and Rename Output Binary
+              shell: bash
+              run: |
+                mkdir -p bins/mac
+
+                # 1. Get the branch name directly (e.g., 'version1.0.5')
+                RAW_BRANCH="${{ github.ref_name }}"
+                
+                # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
+                VERSION="${RAW_BRANCH#version}"
+                
+                echo "Detected Branch: $RAW_BRANCH"
+                echo "Extracted Version: $VERSION"
+
+                # 3. Find the built .app or binary dynamically
+                SOURCE_APP=$(find fyne-cross/bin/darwin-amd64 -name "*.app" -o -name "*.tar.xz" | head -n 1)
+
+                if [ -f "$SOURCE_APP" ] || [ -d "$SOURCE_APP" ]; then
+                        TARGET="bins/mac/calendar_${VERSION}.app"
+                        mv "$SOURCE_APP" "$TARGET"
+                        echo "✅ Success: Moved binary to $TARGET"
+                else
+                        echo "❌ Error: No .app or archive found in fyne-cross output!"
+                        exit 1
+                fi
+
+            - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                name: calendar-macos-${{ github.ref_name }}
+                path: bins/mac/calendar_*
+                retention-days: 30

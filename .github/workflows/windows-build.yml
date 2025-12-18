@@ -1,0 +1,54 @@
+name: Build Windows Binary
+on:
+  push:
+    branches:
+      - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+
+jobs:
+  build:
+    name: Build for Windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # Updated to v4 (recommended)
+
+      - name: Build with Fyne-Cross
+        uses: fyne-io/fyne-cross@v2 # FIX: Changed from fyne.io to fyne-io
+        with:
+          target: 'windows'
+          arch: 'amd64'
+
+      - name: Move and Rename Output Binary
+        shell: bash
+        run: |
+          mkdir -p bins/win
+
+          # 1. Get the branch name directly (e.g., 'version1.0.5')
+          RAW_BRANCH="${{ github.ref_name }}"
+          
+          # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
+          # The ${VAR#prefix} syntax removes "version" from the start of the string
+          VERSION="${RAW_BRANCH#version}"
+          
+          echo "Detected Branch: $RAW_BRANCH"
+          echo "Extracted Version: $VERSION"
+
+          # 3. Find the built .exe dynamically (Fyne usually names it [AppID].exe)
+          SOURCE_EXE=$(find fyne-cross/bin/windows-amd64 -name "*.exe" | head -n 1)
+
+          if [ -f "$SOURCE_EXE" ]; then
+             TARGET="bins/win/calendar_${VERSION}.exe"
+             mv "$SOURCE_EXE" "$TARGET"
+             echo "✅ Success: Moved binary to $TARGET"
+          else
+             echo "❌ Error: No .exe file found in fyne-cross output!"
+             exit 1
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-windows-${{ github.ref_name }} # Includes version in zip name
+          path: bins/win/calendar_*.exe
+          retention-days: 30
