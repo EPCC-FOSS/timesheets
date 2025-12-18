@@ -1,8 +1,9 @@
 name: Build macOS Binary
+
 on:
     push:
         branches:
-            - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+            - 'version*'
 
 jobs:
     build:
@@ -13,27 +14,34 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Build with Fyne-Cross
-              uses: fyne-io/fyne-cross@v2
+            - name: Set up Go
+              uses: actions/setup-go@v5
               with:
-                target: 'darwin'
-                arch: 'amd64'
+                go-version: 'stable'
+
+            # Install fyne-cross tool
+            - name: Install Fyne-Cross
+              run: go install github.com/fyne-io/fyne-cross@latest
+
+            # Run fyne-cross as a command
+            - name: Build for macOS
+              run: |
+                export PATH=$(go env GOPATH)/bin:$PATH
+                fyne-cross darwin -arch=amd64
 
             - name: Move and Rename Output Binary
               shell: bash
               run: |
                 mkdir -p bins/mac
-
-                # 1. Get the branch name directly (e.g., 'version1.0.5')
-                RAW_BRANCH="${{ github.ref_name }}"
                 
-                # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
+                # Extract version from branch name (e.g., version1.0.5 -> 1.0.5)
+                RAW_BRANCH="${{ github.ref_name }}"
                 VERSION="${RAW_BRANCH#version}"
                 
-                echo "Detected Branch: $RAW_BRANCH"
-                echo "Extracted Version: $VERSION"
+                echo "Detected Version: $VERSION"
 
-                # 3. Find the built .app or binary dynamically
+                # fyne-cross outputs to 'fyne-cross/bin/darwin-amd64'
+                # We search for any .app or archive file in that folder
                 SOURCE_APP=$(find fyne-cross/bin/darwin-amd64 -name "*.app" -o -name "*.tar.xz" | head -n 1)
 
                 if [ -f "$SOURCE_APP" ] || [ -d "$SOURCE_APP" ]; then
@@ -50,4 +58,4 @@ jobs:
               with:
                 name: calendar-macos-${{ github.ref_name }}
                 path: bins/mac/calendar_*
-                retention-days: 30
+                retention-days: 10

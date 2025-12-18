@@ -58,4 +58,4 @@ jobs:
         with:
           name: calendar-windows-${{ github.ref_name }}
           path: bins/win/calendar_*.exe
-          retention-days: 30
+          retention-days: 10
