@@ -35,4 +35,4 @@ If there's any issues (especially windows) try this in the `MinGW` terminal
 ```bash
 branch version0.1.0 or tag v0.1.0
 ```
-Once done, push to the origin repo. Wait a couple of minutes for the compilation finishes. After so, you can go to releases (right hand side of the main page of the repo (next to README)) and download it there
+Once done, push to the origin repo. Wait a couple of minutes for the compilation finishes. After so, you can go to releases (right hand side of the main page of the repo (next to README)) and download it there.
