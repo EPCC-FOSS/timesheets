@@ -1,0 +1,6 @@
+[Details]
+Icon = "Icon.jpg"
+Name = "Calendar Utility Node for Timesheets"
+ID = "com.pills.calendar_utility_node_timesheets"
+Version = "0.1.0"
+Build = 1
