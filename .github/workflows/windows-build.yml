@@ -1,8 +1,13 @@
 name: Build Windows Binary
 on:
   push:
+    tags:
+      - "v*"
     branches:
-      - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+      - 'version*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -11,44 +16,60 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Updated to v4 (recommended)
+        uses: actions/checkout@v4
 
-      - name: Build with Fyne-Cross
-        uses: fyne-io/fyne-cross@v2 # FIX: Changed from fyne.io to fyne-io
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          target: 'windows'
-          arch: 'amd64'
+          go-version: 'stable'
+
+      # FIX: Install fyne-cross tool (it is not a GitHub Action)
+      - name: Install Fyne-Cross
+        run: go install github.com/fyne-io/fyne-cross@latest
+
+      # FIX: Run fyne-cross as a command. 
+      # It uses Docker (pre-installed on ubuntu-latest) to cross-compile.
+      - name: Build for Windows
+        run: |
+          export PATH=$(go env GOPATH)/bin:$PATH
+          fyne-cross windows -arch=amd64
 
       - name: Move and Rename Output Binary
         shell: bash
         run: |
           mkdir -p bins/win
-
-          # 1. Get the branch name directly (e.g., 'version1.0.5')
-          RAW_BRANCH="${{ github.ref_name }}"
           
-          # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
-          # The ${VAR#prefix} syntax removes "version" from the start of the string
+          # Extract version from branch name (e.g., version1.0.5 -> 1.0.5)
+          RAW_BRANCH="${{ github.ref_name }}"
           VERSION="${RAW_BRANCH#version}"
           
-          echo "Detected Branch: $RAW_BRANCH"
-          echo "Extracted Version: $VERSION"
+          echo "Detected Version: $VERSION"
 
-          # 3. Find the built .exe dynamically (Fyne usually names it [AppID].exe)
+          # fyne-cross outputs to 'fyne-cross/bin/windows-amd64'
+          # We search for any .exe file in that folder
           SOURCE_EXE=$(find fyne-cross/bin/windows-amd64 -name "*.exe" | head -n 1)
 
           if [ -f "$SOURCE_EXE" ]; then
-             TARGET="bins/win/calendar_${VERSION}.exe"
-             mv "$SOURCE_EXE" "$TARGET"
-             echo "✅ Success: Moved binary to $TARGET"
+            TARGET="bins/win/calendar_${VERSION}.exe"
+            mv "$SOURCE_EXE" "$TARGET"
+            echo "✅ Success: Moved binary to $TARGET"
           else
-             echo "❌ Error: No .exe file found in fyne-cross output!"
-             exit 1
+            echo "❌ Error: No .exe file found in fyne-cross output!"
+            exit 1
           fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: calendar-windows-${{ github.ref_name }} # Includes version in zip name
+          name: calendar-windows-${{ github.ref_name }}
           path: bins/win/calendar_*.exe
-          retention-days: 30
+          retention-days: 10
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: bins/win/*.exe
+          draft: false
+          prerelease: false

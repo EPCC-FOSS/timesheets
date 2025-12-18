@@ -1,55 +1,75 @@
 name: Build Linux Binary
 
 on:
-    push:
-        branches:
-            - 'version*' # Matches branches like version1.0.0, version-2.3, etc.
+  push:
+    tags:
+      - "v*"
+    branches:
+      - 'version*'
+
+permissions:
+  contents: write
 
 jobs:
-    build:
-        name: Build for Linux
-        runs-on: ubuntu-latest
+  build:
+    name: Build for Linux
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4 # Updated to v4 (recommended)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Build with Fyne-Cross
-              uses: fyne-io/fyne-cross@v2 # FIX: Changed from fyne.io to fyne-io
-              with:
-                target: 'linux'
-                arch: 'amd64'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
 
-            - name: Move and Rename Output Binary
-              shell: bash
-              run: |
-                mkdir -p bins/linux
+      # Install fyne-cross tool
+      - name: Install Fyne-Cross
+        run: go install github.com/fyne-io/fyne-cross@latest
 
-                # 1. Get the branch name directly (e.g., 'version1.0.5')
-                RAW_BRANCH="${{ github.ref_name }}"
-                
-                # 2. Strip the 'version' prefix to get just the number (e.g., '1.0.5')
-                # The ${VAR#prefix} syntax removes "version" from the start of the string
-                VERSION="${RAW_BRANCH#version}"
-                
-                echo "Detected Branch: $RAW_BRANCH"
-                echo "Extracted Version: $VERSION"
+      # Run fyne-cross as a command
+      - name: Build for Linux
+        run: |
+          export PATH=$(go env GOPATH)/bin:$PATH
+          fyne-cross linux -arch=amd64
 
-                # 3. Find the built binary dynamically
-                SOURCE_BIN=$(find fyne-cross/bin/linux-amd64 -type f -executable | head -n 1)
+      - name: Move and Rename Output Binary
+        shell: bash
+        run: |
+          mkdir -p bins/linux
+          
+          # Extract version from branch name (e.g., version1.0.5 -> 1.0.5)
+          RAW_BRANCH="${{ github.ref_name }}"
+          VERSION="${RAW_BRANCH#version}"
+          
+          echo "Detected Version: $VERSION"
 
-                if [ -f "$SOURCE_BIN" ]; then
-                        TARGET="bins/linux/calendar_${VERSION}"
-                        mv "$SOURCE_BIN" "$TARGET"
-                        echo "✅ Success: Moved binary to $TARGET"
-                else
-                        echo "❌ Error: No executable file found in fyne-cross output!"
-                        exit 1
-                fi
+          # fyne-cross outputs to 'fyne-cross/bin/linux-amd64'
+          # We search for any executable file in that folder
+          SOURCE_BIN=$(find fyne-cross/bin/linux-amd64 -type f -executable | head -n 1)
 
-            - name: Upload Artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: calendar-linux-${{ github.ref_name }} # Includes version in zip name
-                path: bins/linux/calendar_*
-                retention-days: 30
+          if [ -f "$SOURCE_BIN" ]; then
+            TARGET="bins/linux/calendar_${VERSION}"
+            mv "$SOURCE_BIN" "$TARGET"
+            echo "✅ Success: Moved binary to $TARGET"
+          else
+            echo "❌ Error: No executable file found in fyne-cross output!"
+            exit 1
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: calendar-linux-${{ github.ref_name }}
+          path: bins/linux/calendar_*
+          retention-days: 10
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || startsWith(github.ref, 'refs/heads/version')
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: bins/linux/calendar_*
+          draft: false
+          prerelease: false
