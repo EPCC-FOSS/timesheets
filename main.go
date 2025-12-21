@@ -1,18 +1,19 @@
 package main
+
 import (
 	"log"
 	"os"
 	"path/filepath"
 
-	"calendar_utility_node_for_timesheets/gui"
 	"calendar_utility_node_for_timesheets/db"
+	"calendar_utility_node_for_timesheets/gui"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 )
 
-func main(){
+func main() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Calendar Utility Node for Timesheets")
 
@@ -26,7 +27,7 @@ func main(){
 		log.Fatal(err)
 	}
 
-	//Setup Pages 
+	//Setup Pages
 	profilePage := gui.NewProfilePage(myWindow, repo)
 
 	//Load data on startup

@@ -7,13 +7,13 @@ import (
 	"calendar_utility_node_for_timesheets/db"
 	"calendar_utility_node_for_timesheets/models"
 
-	"image/color"
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"fyne.io/fyne/v2/canvas"
+	"image/color"
 )
 
 type ProfilePage struct {
@@ -94,7 +94,7 @@ func (p *ProfilePage) initWidgets() {
 	)
 	p.ExtraGroup.Hide()
 
-		//Dropdown logic
+	//Dropdown logic
 	p.TypeSelect = widget.NewSelect([]string{
 		string(models.TypeFullTime),
 		string(models.TypePartTime),
@@ -109,8 +109,8 @@ func (p *ProfilePage) initWidgets() {
 	})
 
 	//Schedule inputs initialization
-	for i:= 0; i < 7; i++{
-		entry:= widget.NewEntry()
+	for i := 0; i < 7; i++ {
+		entry := widget.NewEntry()
 		entry.SetPlaceHolder("08:00-12:00, 13:00-17:00")
 		p.ScheduleInputs[i] = entry
 	}
@@ -202,7 +202,7 @@ func (p *ProfilePage) LoadData() {
 	p.Dept.SetText(profile.Department)
 	p.Title.SetText(profile.Title)
 	p.Rate.SetText(fmt.Sprintf("%.2f", profile.Rate))
-	
+
 	p.TypeSelect.SetSelected(string(profile.Type))
 
 	// Populate extra fields

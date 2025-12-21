@@ -1,5 +1,5 @@
 package gui
-/*
+
 import (
 	"fmt"
 	"time"
@@ -9,34 +9,34 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/widget"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 )
 
 type CalendarPage struct {
-	Repo *db.Repository
+	Repo   *db.Repository
 	Window fyne.Window
 
 	//State
 	CurrentDate time.Time
-	Profile *models.Profile
+	Profile     *models.Profile
 
 	//UI components
-	MonthLabel *widget.Label
+	MonthLabel    *widget.Label
 	GridContainer *fyne.Container
 
 	//Daywidgets
 	DayWidgets map[string]*Daycell
 }
 
-//Ui for calendar page
+// Ui for calendar page
 func NewCalendarPage(win fyne.Window, repo *db.Repository) *CalendarPage {
 	return &CalendarPage{
-		Repo: repo,
-		Window: win,
+		Repo:        repo,
+		Window:      win,
 		CurrentDate: time.Now(),
-		DayWidgets: make(map[string]*Daycell),
+		DayWidgets:  make(map[string]*Daycell),
 	}
 }
 
@@ -46,11 +46,11 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 
 	// Month Navigation
 	prevBtn := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), func() {
-		c.CurrentDate = c.CurrentDate.AddDate(0,-1.,0)
+		c.CurrentDate = c.CurrentDate.AddDate(0, -1., 0)
 		c.Refresh()
 	})
 	nextBtn := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), func() {
-		c.CurrentDate = c.CurrentDate.AddDate(0,1,0)
+		c.CurrentDate = c.CurrentDate.AddDate(0, 1, 0)
 		c.Refresh()
 	})
 
@@ -84,7 +84,7 @@ func (c *CalendarPage) buildWeekHeader() fyne.CanvasObject {
 	return header
 }
 
-func (c * CalendarPage) Refresh() {
+func (c *CalendarPage) Refresh() {
 	c.updateMonthLabel()
 	c.GridContainer.Objects = nil
 	c.DayWidgets = make(map[string]*Daycell)
@@ -95,12 +95,17 @@ func (c * CalendarPage) Refresh() {
 		dialog.ShowError(err, c.Window)
 		return
 	}
-
 	c.Profile = prof
 
 	// Check if existing timesheet for month
+	existingSheet, _ := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), int(c.CurrentDate.Year()))
+
+	//Calculate days
+	year, month, _ := c.CurrentDate.Date()
+	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
+
 }
 
 func (c *CalendarPage) exportData() {
 	dialog.ShowInformation("Export", "Export functionality not implemented yet.", c.Window)
-}*/
+}

@@ -5,15 +5,15 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	_ "modernc.org/sqlite"
+	"path/filepath"
 )
 
 type Repository struct {
 	Conn *sql.DB
 }
 
-func NewRepository(dbFolder string) (*Repository, error){
+func NewRepository(dbFolder string) (*Repository, error) {
 	dbPath := filepath.Join(dbFolder, "school_timesheets.db")
 	conn, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -39,12 +39,12 @@ func NewRepository(dbFolder string) (*Repository, error){
 		entries_json TEXT, --map[string]DailyEntry
 		UNIQUE (month, year) -- Prevent duplicate sheets for the same month
 	);`
-	
-	if _, err := conn.Exec(profilQuery); err !=nil {
+
+	if _, err := conn.Exec(profilQuery); err != nil {
 		return nil, fmt.Errorf("profile table init: %w", err)
 	}
 
-	if _, err := conn.Exec(timesheetQuery); err !=nil {
+	if _, err := conn.Exec(timesheetQuery); err != nil {
 		return nil, fmt.Errorf("timesheet table init: %w", err)
 	}
 
@@ -91,7 +91,7 @@ func (r *Repository) GetProfile() (*models.Profile, error) {
 
 /* TIMESHEET METHODS */
 
-func (r *Repository) SaveTimesheet( t models.Timesheet) error {
+func (r *Repository) SaveTimesheet(t models.Timesheet) error {
 	// Marshal entries to JSON
 	entriesData, err := json.Marshal(t.Entries)
 	if err != nil {
@@ -128,7 +128,7 @@ func (r *Repository) GetTimesheets() ([]models.Timesheet, error) {
 
 		//Unmarshal entries JSON
 		json.Unmarshal([]byte(jsonBlob), &t.Entries)
-		sheets = append (sheets, t)
+		sheets = append(sheets, t)
 	}
 
 	return sheets, nil
@@ -145,9 +145,9 @@ func (r *Repository) GetTimesheetByDate(month int, year int) (*models.Timesheet,
 	var jsonBlob string
 
 	// error handling for query
-	if err := row.Scan(&t.ID, &t.Month, &t.Year, &t.TotalWorked, &jsonBlob); err != nil{
+	if err := row.Scan(&t.ID, &t.Month, &t.Year, &t.TotalWorked, &jsonBlob); err != nil {
 		// no rows found
-		if err == sql.ErrNoRows{
+		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		// Any other error

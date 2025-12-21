@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//Calculate hours for range lists
+// Calculate hours for range lists
 func CalculateHours(scheduleStr string) float64 {
 	if scheduleStr == "" {
 		return 0
@@ -17,7 +17,7 @@ func CalculateHours(scheduleStr string) float64 {
 	for _, part := range parts {
 		//Check for valid range
 		times := strings.Split(strings.TrimSpace(part), "-")
-		if len(times) !=2{
+		if len(times) != 2 {
 			continue
 		}
 

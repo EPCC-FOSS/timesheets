@@ -4,36 +4,36 @@ import (
 	"fmt"
 )
 
-//Timerange model for schedule
+// Timerange model for schedule
 type TimeRange struct {
 	Start string `json:"start"`
 	End   string `json:"end"`
 }
 
-//Schedule model
+// Schedule model
 type DaySchedule struct {
-	Active bool `json:"active"`
+	Active bool        `json:"active"`
 	Ranges []TimeRange `json:"ranges"`
 }
 
-//Profile model
+// Profile model
 type Profile struct {
 	//Basic employee info
-	ID int64 `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName string `json:"last_name"`
+	ID            int64  `json:"id"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
 	MiddleInitial string `json:"middle_initial"`
-	EmployeeID string `json:"employee_id"`
+	EmployeeID    string `json:"employee_id"`
 
 	// Job details
-	Type EmployeeType `json:"type"`
-	Title string `json:"title"`
-	Department string `json:"department"`
-	Rate float64 `json:"rate"`
+	Type       EmployeeType `json:"type"`
+	Title      string       `json:"title"`
+	Department string       `json:"department"`
+	Rate       float64      `json:"rate"`
 
-	// Accounting codes 
+	// Accounting codes
 	Fund string `json:"fund"`
-	Org string `json:"org"`
+	Org  string `json:"org"`
 	Acct string `json:"acct"`
 	Prog string `json:"prog"`
 
