@@ -133,3 +133,32 @@ func (r *Repository) GetTimesheets() ([]models.Timesheet, error) {
 
 	return sheets, nil
 }
+
+// Helper to extract timesheet by month and year
+func (r *Repository) GetTimesheetByDate(month int, year int) (*models.Timesheet, error) {
+	// Get timesheet from db
+	query := `SELECT id, month, year, total_worked, entried_json FROM timesheets WHERE month = ? AND year = ?`
+	row := r.Conn.QueryRow(query, month, year)
+
+	// Timesheet and blob
+	var t models.Timesheet
+	var jsonBlob string
+
+	// error handling for query
+	if err := row.Scan(&t.ID, &t.Month, &t.Year, &t.TotalWorked, &jsonBlob); err != nil{
+		// no rows found
+		if err == sql.ErrNoRows{
+			return nil, nil
+		}
+		// Any other error
+		return nil, err
+	}
+
+	//Error handling for json
+	if err := json.Unmarshal([]byte(jsonBlob), &t.Entries); err != nil {
+		return nil, err
+	}
+
+	//Return timesheet, no error
+	return &t, nil
+}
