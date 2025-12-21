@@ -6,7 +6,7 @@ import (
 )
 
 // Calculate hours for range lists
-func CalculateHours(scheduleStr string) float64 {
+func CalculateDailyHours(scheduleStr string) float64 {
 	if scheduleStr == "" {
 		return 0
 	}
