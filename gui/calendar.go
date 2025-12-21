@@ -31,16 +31,20 @@ type CalendarPage struct {
 
 // Ui for calendar page
 func NewCalendarPage(win fyne.Window, repo *db.Repository) *CalendarPage {
-	return &CalendarPage{
+	c := &CalendarPage{
 		Repo:        repo,
 		Window:      win,
 		CurrentDate: time.Now(),
 		DayWidgets:  make(map[string]*DayCell),
 	}
+
+	//FIX: Init widgets immediately so refresh can use them safely
+	c.MonthLabel = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	c.GridContainer = container.NewGridWithColumns(7)
+	return c
 }
 
 func (c *CalendarPage) BuildUI() fyne.CanvasObject {
-	c.MonthLabel = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	c.updateMonthLabel()
 
 	// Month Navigation
@@ -60,7 +64,7 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 	header := container.NewHBox(prevBtn, c.MonthLabel, nextBtn, layoutSpacer(0), saveBtn, exportBtn)
 
 	// Grid for days
-	c.GridContainer = container.NewGridWithColumns(7)
+	// No longer need c.GridContainer = container.NewGridWithColumns(7)
 
 	return container.NewBorder(
 		header,

@@ -29,14 +29,18 @@ func main() {
 
 	//Setup Pages
 	profilePage := gui.NewProfilePage(myWindow, repo)
+	calendarPage := gui.NewCalendarPage(myWindow, repo)
 
 	//Load data on startup
 	profilePage.LoadData()
 
+	//Load calendar data
+	calendarPage.Refresh()
+
 	//Layout for tabs
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Profile", profilePage.BuildUI()),
-		container.NewTabItem("Calendar", container.NewVBox()), //placeholder for calendar tab
+		container.NewTabItem("Calendar", calendarPage.BuildUI()), //placeholder for calendar tab
 	)
 
 	myWindow.SetContent(tabs)
