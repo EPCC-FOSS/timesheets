@@ -35,7 +35,9 @@ func main() {
 	profilePage.LoadData()
 
 	//Load calendar data
-	calendarPage.Refresh()
+	profilePage.OnSaved = func ()  {
+		calendarPage.Refresh()
+	}
 
 	//Layout for tabs
 	tabs := container.NewAppTabs(

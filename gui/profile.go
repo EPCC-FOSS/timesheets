@@ -48,6 +48,9 @@ type ProfilePage struct {
 
 	//Locking logic
 	IsLocked bool
+
+	// Update field funtion for ./calendar.go Refresh()
+	OnSaved func()
 }
 
 func NewProfilePage(win fyne.Window, repo *db.Repository) *ProfilePage {
@@ -175,7 +178,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 		buttonRow,
 	)
 
-	return container.NewPadded(container.NewScroll(content))
+	return container.NewScroll(container.NewPadded(content))
 }
 
 func layoutSpacer(height float32) fyne.CanvasObject {
@@ -284,6 +287,11 @@ func (p *ProfilePage) saveData() {
 	if err := p.Repo.SaveProfile(&prof); err != nil {
 		dialog.ShowError(err, p.Window)
 		return
+	}
+
+	//Trigger callback for calendar update
+	if p.OnSaved != nil {
+		p.OnSaved()
 	}
 
 	dialog.ShowInformation("Success", "Profile Saved", p.Window)
