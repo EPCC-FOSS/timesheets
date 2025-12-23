@@ -9,7 +9,6 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -21,6 +20,8 @@ type DayCell struct {
 
 	//Input
 	WorkedEntry *widget.Entry
+
+	ExtrasContainer *fyne.Container
 
 	// Full time inputs
 	SickEntry     *widget.Entry
@@ -51,30 +52,31 @@ func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType)
 		cell.HolidayEntry = makeEntry(data.Holiday)
 		cell.CompEntry = makeEntry(data.CompTimeTaken)
 		cell.OtherEntry = makeEntry(data.OtherPaid)
+
 		//Create extras container
-		extras := container.NewVBox(
+		cell.ExtrasContainer = container.NewVBox(
 			inputRow("Sick", cell.SickEntry),
 			inputRow("Vac", cell.VacationEntry),
 			inputRow("Hol", cell.HolidayEntry),
 			inputRow("Comp", cell.CompEntry),
 			inputRow("Oth", cell.OtherEntry),
 		)
-		extras.Hide() //HIDE ft button
-
-		// Toggle button for extras
-		toggleBtn := widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
-			if extras.Hidden {
-				extras.Show()
-			} else {
-				extras.Hide()
-			}
-		})
+		cell.ExtrasContainer.Hide() //HIDE ft button
 
 		//content put together
 		content = container.NewVBox(
-			container.NewBorder(nil, nil, dayLabel, toggleBtn, nil), // Header
-			container.NewBorder(nil, nil, widget.NewLabel("Work:"), nil, cell.WorkedEntry),
-			extras,
+			container.NewBorder(
+				nil, nil,
+				dayLabel,
+				nil, nil,
+			),
+			container.NewBorder(
+				nil, nil,
+				widget.NewLabel("Work:"),
+				nil,
+				cell.WorkedEntry,
+			),
+			cell.ExtrasContainer,
 		)
 	} else {
 		// Part tume and work study layout
@@ -128,6 +130,18 @@ func (day *DayCell) GetData() models.DailyEntry {
 	return entry
 }
 
+// Helper function to toggle extra fields in full time timesheet
+func (d *DayCell) SetExtrasVisible (show bool) {
+	if d.ExtrasContainer == nil {
+		return
+	}
+	if show {
+		d.ExtrasContainer.Show()
+	}else{
+		d.ExtrasContainer.Hide()
+	}
+}
+
 // Helper to convert hours worked from text to float
 func parseFloat(str string) float64 {
 	if str == "" {
@@ -136,3 +150,4 @@ func parseFloat(str string) float64 {
 	f, _ := strconv.ParseFloat(str, 64)
 	return f
 }
+

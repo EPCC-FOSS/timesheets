@@ -20,10 +20,12 @@ type CalendarPage struct {
 	//State
 	CurrentDate time.Time
 	Profile     *models.Profile
+	ShowDetails bool
 
 	//UI components
 	MonthLabel    *widget.Label
 	GridContainer *fyne.Container
+	ToggleBtn *widget.Button
 
 	//Daywidgets
 	DayWidgets map[string]*DayCell
@@ -35,12 +37,25 @@ func NewCalendarPage(win fyne.Window, repo *db.Repository) *CalendarPage {
 		Repo:        repo,
 		Window:      win,
 		CurrentDate: time.Now(),
+		ShowDetails: false,
 		DayWidgets:  make(map[string]*DayCell),
 	}
 
 	//FIX: Init widgets immediately so refresh can use them safely
 	c.MonthLabel = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	c.GridContainer = container.NewGridWithColumns(7)
+
+
+	//Toggle fields for full time
+	c.ToggleBtn = widget.NewButtonWithIcon("Show Extra Fields", theme.MenuDropDownIcon(), func ()  {
+		c.ShowDetails = !c.ShowDetails //Flip state
+
+		for _, cell := range c.DayWidgets {
+			cell.SetExtrasVisible(c.ShowDetails)
+		}
+	})
+	c.ToggleBtn.Hide()
+
 	return c
 }
 
@@ -66,6 +81,7 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 		c.MonthLabel,
 		nextBtn,
 		layoutSpacer(0),
+		c.ToggleBtn,
 		saveBtn,
 		exportBtn,
 	)
@@ -108,6 +124,14 @@ func (c *CalendarPage) Refresh() {
 		return
 	}
 	c.Profile = prof
+
+	// Include full time fields toggle if employee is full time
+	if c.Profile.Type == models.TypeFullTime {
+		c.ToggleBtn.Show()
+	}else{
+		c.ToggleBtn.Hide()
+		c.ShowDetails = false
+	}
 
 	// Check if existing timesheet for month
 	existingSheet, _ := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), c.CurrentDate.Year())
@@ -167,6 +191,7 @@ func (c *CalendarPage) Refresh() {
 
 		// Create widget
 		cell := NewDayCell(day, entry, c.Profile.Type)
+		cell.SetExtrasVisible(c.ShowDetails)
 		c.DayWidgets[dateStr] = cell
 		c.GridContainer.Add(cell.CanvasObj)
 	}
