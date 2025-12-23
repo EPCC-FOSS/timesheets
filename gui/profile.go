@@ -154,7 +154,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 
 	//Schedule form
 
-	days := []string{"MMonday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+	days := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 	scheduleForm := widget.NewForm()
 
 	for i, day := range days {

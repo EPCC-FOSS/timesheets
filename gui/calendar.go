@@ -61,18 +61,27 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 	saveBtn := widget.NewButtonWithIcon("Save Changes", theme.DocumentSaveIcon(), c.saveData)
 	exportBtn := widget.NewButtonWithIcon("Export to PDF", theme.DocumentIcon(), c.exportData)
 
-	header := container.NewHBox(prevBtn, c.MonthLabel, nextBtn, layoutSpacer(0), saveBtn, exportBtn)
+	mainHeader := container.NewHBox(
+		prevBtn,
+		c.MonthLabel,
+		nextBtn,
+		layoutSpacer(0),
+		saveBtn,
+		exportBtn,
+	)
 
-	// Grid for days
-	// No longer need c.GridContainer = container.NewGridWithColumns(7)
-
-	return container.NewBorder(
-		header,
+	// Calendar nesed laYOUT
+	calendaContent := container.NewBorder(
+		c.buildWeekHeader(),
 		nil, nil, nil,
-		container.NewVBox(
-			c.buildWeekHeader(),
-			container.NewScroll(c.GridContainer),
-		),
+		container.NewScroll(c.GridContainer),
+	)
+
+	//Calendar tab built
+	return container.NewBorder(
+		mainHeader,
+		nil, nil, nil,
+		calendaContent,
 	)
 }
 
@@ -101,41 +110,43 @@ func (c *CalendarPage) Refresh() {
 	c.Profile = prof
 
 	// Check if existing timesheet for month
-	existingSheet, _ := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), int(c.CurrentDate.Year()))
+	existingSheet, _ := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), c.CurrentDate.Year())
 
 	//Calculate days
 	year, month, _ := c.CurrentDate.Date()
 	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
-	
-	// Determine padding for first day (eg, 1st on monday, 
+
+	// Determine padding for first day (eg, 1st on monday,
 	// 1 cell of padding to the left of the first row)
 	startOffset := int(firstOfMonth.Weekday()) - 1
-	if startOffset < 0{
+	if startOffset < 0 {
 		startOffset = 6 //Sunday
 	}
 
 	//Add padding
-	for i:= 0; i < startOffset; i++ {
+	for i := 0; i < startOffset; i++ {
 		c.GridContainer.Add(layoutSpacer(10))
 	}
 
 	// Render days in month
 	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
-	for day:= 1; day <= daysInMonth; day++{
-		date := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local)
-		dateStr := date.Format("2006-01-01")
+
+	for day := 1; day <= daysInMonth; day++ {
+		date := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+		dateStr := date.Format("2006-01-02")
 
 		// Check data for this day
 		var entry models.DailyEntry
+
 		//Existing data
-		if existingSheet != nil && len(existingSheet.Entries) > 0{
+		if existingSheet != nil && len(existingSheet.Entries) > 0 {
 			if val, ok := existingSheet.Entries[dateStr]; ok {
 				entry = val
 			}
 		} else {
 			// No existing data
 			//Convert go weekday to our map
-			dayOfWeek := int(date.Weekday())-1
+			dayOfWeek := int(date.Weekday()) - 1
 			if dayOfWeek < 0 {
 				dayOfWeek = 6
 			}
@@ -165,16 +176,16 @@ func (c *CalendarPage) Refresh() {
 }
 
 // Helper to update month ladle
-func (c *CalendarPage) updateMonthLabel(){
-	c.MonthLabel.SetText(c.CurrentDate.Format("January 2026"))
+func (c *CalendarPage) updateMonthLabel() {
+	c.MonthLabel.SetText(c.CurrentDate.Format("January 2006"))
 }
 
 // Save data
-func (c *CalendarPage) saveData(){
+func (c *CalendarPage) saveData() {
 	//Collect data from GU
 	entries := make(map[string]models.DailyEntry)
 	var totalWorked float64
-	for dateStr, cell := range c.DayWidgets{
+	for dateStr, cell := range c.DayWidgets {
 		data := cell.GetData()
 		entries[dateStr] = data
 		totalWorked += data.HoursWorked
@@ -182,18 +193,18 @@ func (c *CalendarPage) saveData(){
 
 	// Create timesheet model
 	ts := models.Timesheet{
-		Month: int(c.CurrentDate.Month()),
-		Year: c.CurrentDate.Year(),
-		Entries: entries,
+		Month:       int(c.CurrentDate.Month()),
+		Year:        c.CurrentDate.Year(),
+		Entries:     entries,
 		TotalWorked: totalWorked,
 	}
 
-	if err := c.Repo.SaveTimesheet(ts); err != nil{
+	if err := c.Repo.SaveTimesheet(ts); err != nil {
 		dialog.ShowError(err, c.Window)
 		return
 	}
 
-	dialog.ShowInformation("Saved","Timesheet Updated Successfully.", c.Window)
+	dialog.ShowInformation("Saved", "Timesheet Updated Successfully.", c.Window)
 }
 
 // Will work on it later
