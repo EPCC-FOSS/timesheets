@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"time"
 
 	"calendar_utility_node_for_timesheets/db"
@@ -24,7 +25,8 @@ type CalendarPage struct {
 
 	//UI components
 	MonthLabel    *widget.Label
-	GridContainer *fyne.Container
+	WeeksContainer *fyne.Container
+	FooterLabel *widget.Label
 	ToggleBtn *widget.Button
 
 	//Daywidgets
@@ -41,10 +43,10 @@ func NewCalendarPage(win fyne.Window, repo *db.Repository) *CalendarPage {
 		DayWidgets:  make(map[string]*DayCell),
 	}
 
-	//FIX: Init widgets immediately so refresh can use them safely
+	//Widgets init
 	c.MonthLabel = widget.NewLabelWithStyle("", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	c.GridContainer = container.NewGridWithColumns(7)
-
+	c.WeeksContainer = container.NewVBox()
+	c.FooterLabel = widget.NewLabel("Loading...")
 
 	//Toggle fields for full time
 	c.ToggleBtn = widget.NewButtonWithIcon("Show Extra Fields", theme.MenuDropDownIcon(), func ()  {
@@ -89,8 +91,9 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 	// Calendar nesed laYOUT
 	calendaContent := container.NewBorder(
 		c.buildWeekHeader(),
-		nil, nil, nil,
-		container.NewScroll(c.GridContainer),
+		c.FooterLabel,
+		nil, nil,
+		container.NewScroll(c.WeeksContainer),
 	)
 
 	//Calendar tab built
@@ -103,18 +106,29 @@ func (c *CalendarPage) BuildUI() fyne.CanvasObject {
 
 func (c *CalendarPage) buildWeekHeader() fyne.CanvasObject {
 	// Weekday headers
-	days := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
-	header := container.NewGridWithColumns(7)
-	for _, d := range days {
-		header.Add(widget.NewLabelWithStyle(d, fyne.TextAlignCenter, fyne.TextStyle{Bold: true}))
-
+	days := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun", "Weekly Totals"}
+	
+	// Grid for days
+	dayGrid := container.NewGridWithColumns(7)
+	for i := 0; i < 7; i++ {
+		dayGrid.Add(widget.NewLabelWithStyle(days[i], fyne.TextAlignCenter, fyne.TextStyle{Bold: true}))
 	}
-	return header
+
+	// Weekly stats container
+	statsLabel := widget.NewLabelWithStyle("Weekly Stats", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	
+	// Split containing both weekly total stats and days
+	split := container.NewHSplit(dayGrid, statsLabel)
+	split.SetOffset(0.85)
+	return split
 }
 
 func (c *CalendarPage) Refresh() {
+	//Clear items
 	c.updateMonthLabel()
-	c.GridContainer.Objects = nil
+
+	//Setup
+	c.WeeksContainer.Objects = nil
 	c.DayWidgets = make(map[string]*DayCell)
 
 	// get proofile
@@ -139,22 +153,24 @@ func (c *CalendarPage) Refresh() {
 	//Calculate days
 	year, month, _ := c.CurrentDate.Date()
 	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
+	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
+
+	// Buffer days into slice of len 7 to render week as a row
+	var currentWeekCells []fyne.CanvasObject
+	var currentWeekData []models.DailyEntry
 
 	// Determine padding for first day (eg, 1st on monday,
 	// 1 cell of padding to the left of the first row)
 	startOffset := int(firstOfMonth.Weekday()) - 1
-	if startOffset < 0 {
-		startOffset = 6 //Sunday
-	}
+	if startOffset < 0 {startOffset = 6} //sunday fix
 
 	//Add padding
 	for i := 0; i < startOffset; i++ {
-		c.GridContainer.Add(layoutSpacer(10))
+		currentWeekCells = append(currentWeekCells, layoutSpacer(10))
+		currentWeekData = append(currentWeekData, models.DailyEntry{})
 	}
 
-	// Render days in month
-	daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.Local).Day()
-
+	// Render day cells
 	for day := 1; day <= daysInMonth; day++ {
 		date := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
 		dateStr := date.Format("2006-01-02")
@@ -168,12 +184,9 @@ func (c *CalendarPage) Refresh() {
 				entry = val
 			}
 		} else {
-			// No existing data
-			//Convert go weekday to our map
+			// Autofill with schedule
 			dayOfWeek := int(date.Weekday()) - 1
-			if dayOfWeek < 0 {
-				dayOfWeek = 6
-			}
+			if dayOfWeek < 0 {dayOfWeek = 6}
 
 			// Get schedule and calculate hours based on time ranges from schedule
 			if sched, ok := c.Profile.Schedule[dayOfWeek]; ok && sched.Active {
@@ -193,11 +206,118 @@ func (c *CalendarPage) Refresh() {
 		cell := NewDayCell(day, entry, c.Profile.Type)
 		cell.SetExtrasVisible(c.ShowDetails)
 		c.DayWidgets[dateStr] = cell
-		c.GridContainer.Add(cell.CanvasObj)
+
+		//Add individual cells with data
+		currentWeekCells = append(currentWeekCells, cell.CanvasObj)
+		currentWeekData = append(currentWeekData, entry)
+
+		// End of week check
+		if len(currentWeekCells) == 7 {
+			c.renderWeekRow(currentWeekCells, currentWeekData)
+			currentWeekCells = nil
+			currentWeekData = nil
+		}
 	}
 
-	// Refresh the container
-	c.GridContainer.Refresh()
+	//Handle End of month padding
+	if len(currentWeekCells) > 0 {
+		for len(currentWeekCells) < 7 {
+			currentWeekCells = append(currentWeekCells, layoutSpacer(10))
+			currentWeekData = append(currentWeekData, models.DailyEntry{})
+		}
+
+		c.renderWeekRow(currentWeekCells, currentWeekData)
+	}
+
+	c.WeeksContainer.Refresh()
+
+	// Show monthly total
+	c.updateFooterTotals(existingSheet)
+}
+
+//TODO: Row rendering helper
+func (c *CalendarPage) renderWeekRow(cells []fyne.CanvasObject, data []models.DailyEntry) {
+	//Build grid
+	dayGrid := container.NewGridWithColumns(7)
+	for _, obj := range cells {dayGrid.Add(obj)}
+
+	//Calculate weekly totals
+	statsBox := c.buildWeeklyStats(data)
+
+	//Combine weekly entries with totals
+	split := container.NewHSplit(dayGrid, statsBox)
+	split.SetOffset(0.85)
+
+	//Add week container
+	c.WeeksContainer.Add(split)
+	c.WeeksContainer.Add(widget.NewSeparator())
+}
+
+//TODO:: build weekly stats helper
+func (c *CalendarPage) buildWeeklyStats(data []models.DailyEntry) fyne.CanvasObject {
+	//Add each total
+	var totalWorked, totalSick, totalVac, totalHol, totalComp, totalOther float64
+	for _, d := range data {
+		totalWorked += d.HoursWorked
+		totalSick += d.SickLeave
+		totalVac += d.Vacation
+		totalHol += d.Holiday
+		totalComp += d.CompTimeTaken // extra hours worked input
+		totalOther += d.OtherPaid
+	}
+	
+	//Total weekly compensation
+	totalCompensated := totalWorked + totalSick + totalVac + totalHol + totalComp + totalOther
+	
+	//Get overtime based on threshodls from models/employee.go
+	threshold := c.Profile.Type.OvertimeThreshold()
+	var otHours float64
+	if totalCompensated > threshold {
+		otHours = totalCompensated - threshold
+	}
+
+	// Build the text UI
+	content := container.NewVBox()
+
+	//Line 1: Hours Worked
+	content.Add(widget.NewLabelWithStyle(fmt.Sprintf("Worked %.2f", totalWorked), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+
+	if c.Profile.Type == models.TypeFullTime {
+		details := ""
+		if totalSick > 0 {details += fmt.Sprintf("Sick: %.1f\n", totalSick)}
+		if totalVac > 0 {details += fmt.Sprintf("Vac: %.1f\n", totalVac)}
+		if totalHol > 0 {details += fmt.Sprintf("Hol: %.f\n", totalHol)}
+		if totalComp > 0 {details += fmt.Sprintf("Comp: %.1f\n", totalComp)}
+		if totalOther > 0 {details += fmt.Sprintf("Other: %.1f\n")}
+
+		if details != "" {
+			label := widget.NewLabel(details)
+			label.Wrapping = fyne.TextWrapWord
+			content.Add(label)
+		}
+	}
+
+	// Include overtime rendering
+	if otHours > 0 {
+		otLabel := widget.NewLabelWithStyle(fmt.Sprintf("OT: %.2f", otHours), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+		content.Add(otLabel)
+	}else{
+		content.Add(widget.NewLabel("OT: 0.00"))
+	}
+
+	return container.NewPadded(content)
+}
+
+//TODO: Helper to update monthly totals
+func (c *CalendarPage) updateFooterTotals(sheet *models.Timesheet) {
+	var grandTotalWork float64
+
+	for _, cell := range c.DayWidgets {
+		d:= cell.GetData()
+		grandTotalWork += d.HoursWorked
+	}
+
+	c.FooterLabel.SetText(fmt.Sprintf("Monthly Total Worked: %.2f hrs", grandTotalWork))
 }
 
 // Helper to update month ladle
