@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"log"
 	"fmt"
 	"image/color"
 	"time"
@@ -123,6 +124,8 @@ func (c *CalendarPage) Refresh() {
 		return
 	}
 
+	log.Printf("DEBUG: Attempting to load timesheet for Month=%d Year=%d\n", int(c.CurrentDate.Month()), c.CurrentDate.Year())
+
 	//No profile set
 	if prof == nil {
 		return
@@ -137,7 +140,15 @@ func (c *CalendarPage) Refresh() {
 		c.ShowDetails = false
 	}
 
-	existingSheet, _ := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), c.CurrentDate.Year())
+	existingSheet, err := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), c.CurrentDate.Year())
+
+	if err != nil {
+		log.Println("DEBUG: Critical DB Error:", err)
+	} else if existingSheet == nil {
+		log.Println("DEBUG: No saved data found. Loading defaults")
+	} else {
+		log.Printf("DEBUG: Loaded Timesheet, found %d entries", len(existingSheet.Entries))
+	}
 
 	// Date Math
 	year, month, _ := c.CurrentDate.Date()
@@ -333,6 +344,10 @@ func (c *CalendarPage) saveData() {
 		entries[dateStr] = data
 		totalWorked += data.HoursWorked
 	}
+	
+	log.Printf("DEBUG: Saving Timesheet -> Month: %d, Year: %d, Total Entries: %d, Total Hours: %.2f\n", 
+        int(c.CurrentDate.Month()), c.CurrentDate.Year(), len(entries), totalWorked)
+
 	ts := models.Timesheet{
 		Month:       int(c.CurrentDate.Month()),
 		Year:        c.CurrentDate.Year(),
@@ -340,10 +355,12 @@ func (c *CalendarPage) saveData() {
 		TotalWorked: totalWorked,
 	}
 	if err := c.Repo.SaveTimesheet(ts); err != nil {
+		log.Println("DEBUG: Save FAILED:", err)
 		dialog.ShowError(err, c.Window)
 		return
 	}
 	dialog.ShowInformation("Saved", "Timesheet Updated Successfully.", c.Window)
+	log.Println("DEBUG: Save SUCCESS")
 }
 
 func (c *CalendarPage)makeFixedContainer(obj fyne.CanvasObject) fyne.CanvasObject {

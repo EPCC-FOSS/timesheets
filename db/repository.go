@@ -112,7 +112,7 @@ func (r *Repository) SaveTimesheet(t models.Timesheet) error {
 }
 
 func (r *Repository) GetTimesheets() ([]models.Timesheet, error) {
-	rows, err := r.Conn.Query(`SELECT id, month, year, total_worked, entried_json FROM timesheets ORDER BY year DESC, month DESC`)
+	rows, err := r.Conn.Query(`SELECT id, month, year, total_worked, entries_json FROM timesheets ORDER BY year DESC, month DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (r *Repository) GetTimesheets() ([]models.Timesheet, error) {
 // Helper to extract timesheet by month and year
 func (r *Repository) GetTimesheetByDate(month int, year int) (*models.Timesheet, error) {
 	// Get timesheet from db
-	query := `SELECT id, month, year, total_worked, entried_json FROM timesheets WHERE month = ? AND year = ?`
+	query := `SELECT id, month, year, total_worked, entries_json FROM timesheets WHERE month = ? AND year = ?`
 	row := r.Conn.QueryRow(query, month, year)
 
 	// Timesheet and blob
