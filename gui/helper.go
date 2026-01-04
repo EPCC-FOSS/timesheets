@@ -40,9 +40,9 @@ func CalculateDailyHours(scheduleStr string) float64 {
 	return total
 }
 
-//Parsing helper to handle single and double difit time
+// Parsing helper to handle single and double difit time
 func parseFlexibleTime(t string) (time.Time, error) {
-	// Try 24 hour format 
+	// Try 24 hour format
 	if parsed, err := time.Parse("15:04", t); err == nil {
 		return parsed, nil
 	}

@@ -138,13 +138,13 @@ func (day *DayCell) GetData() models.DailyEntry {
 }
 
 // Helper function to toggle extra fields in full time timesheet
-func (d *DayCell) SetExtrasVisible (show bool) {
+func (d *DayCell) SetExtrasVisible(show bool) {
 	if d.ExtrasContainer == nil {
 		return
 	}
 	if show {
 		d.ExtrasContainer.Show()
-	}else{
+	} else {
 		d.ExtrasContainer.Hide()
 	}
 }
@@ -157,4 +157,3 @@ func parseFloat(str string) float64 {
 	f, _ := strconv.ParseFloat(str, 64)
 	return f
 }
-

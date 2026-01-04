@@ -35,7 +35,7 @@ func main() {
 	profilePage.LoadData()
 
 	//Load calendar data
-	profilePage.OnSaved = func ()  {
+	profilePage.OnSaved = func() {
 		calendarPage.Refresh()
 	}
 

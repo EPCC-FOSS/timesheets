@@ -1,9 +1,9 @@
 package gui
 
 import (
-	"log"
 	"fmt"
 	"image/color"
+	"log"
 	"time"
 
 	"calendar_utility_node_for_timesheets/db"
@@ -108,7 +108,7 @@ func (c *CalendarPage) buildWeekHeader() fyne.CanvasObject {
 	// Build stats header and firce it to specific width
 	statsLabel := widget.NewLabelWithStyle("Weekly Stats", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	rightContainer := c.makeFixedContainer(statsLabel)
-	
+
 	return container.NewBorder(nil, nil, nil, rightContainer, dayGrid)
 }
 
@@ -161,7 +161,9 @@ func (c *CalendarPage) Refresh() {
 
 	// Padding
 	startOffset := int(firstOfMonth.Weekday()) - 1
-	if startOffset < 0 { startOffset = 6 }
+	if startOffset < 0 {
+		startOffset = 6
+	}
 
 	for i := 0; i < startOffset; i++ {
 		currentWeekCells = append(currentWeekCells, layoutSpacer(10))
@@ -184,7 +186,9 @@ func (c *CalendarPage) Refresh() {
 		} else {
 			// Schedule Auto-fill
 			dayOfWeek := int(date.Weekday()) - 1
-			if dayOfWeek < 0 { dayOfWeek = 6 }
+			if dayOfWeek < 0 {
+				dayOfWeek = 6
+			}
 			if sched, ok := c.Profile.Schedule[dayOfWeek]; ok && sched.Active {
 				for _, r := range sched.Ranges {
 					entry.HoursWorked += CalculateDailyHours(r.Start + "-" + r.End)
@@ -252,7 +256,9 @@ func (c *CalendarPage) recalculateLive() {
 	firstOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.Local)
 
 	startOffset := int(firstOfMonth.Weekday()) - 1
-	if startOffset < 0 { startOffset = 6 }
+	if startOffset < 0 {
+		startOffset = 6
+	}
 
 	var currentWeekData []models.DailyEntry
 	weekIndex := 0
@@ -306,7 +312,7 @@ func generateStatsText(data []models.DailyEntry, empType models.EmployeeType) st
 
 	// FIX: Correct Overtime Math (Was adding Other twice, missing Comp)
 	totalCompensated := tWork + tSick + tVac + tHol + tComp + tOther
-	
+
 	threshold := empType.OvertimeThreshold()
 	var otHours float64
 	if totalCompensated > threshold {
@@ -316,11 +322,21 @@ func generateStatsText(data []models.DailyEntry, empType models.EmployeeType) st
 	text := fmt.Sprintf("Work %.2f", tWork)
 
 	if empType == models.TypeFullTime {
-		if tSick > 0 { text += fmt.Sprintf("\nSick %.1f", tSick) }
-		if tVac > 0 { text += fmt.Sprintf("\nVac: %.1f", tVac) }
-		if tHol > 0 { text += fmt.Sprintf("\nHol: %.1f", tHol) }
-		if tComp > 0 { text += fmt.Sprintf("\nComp: %.1f", tComp) }
-		if tOther > 0 { text += fmt.Sprintf("\nOth: %.1f", tOther) }
+		if tSick > 0 {
+			text += fmt.Sprintf("\nSick %.1f", tSick)
+		}
+		if tVac > 0 {
+			text += fmt.Sprintf("\nVac: %.1f", tVac)
+		}
+		if tHol > 0 {
+			text += fmt.Sprintf("\nHol: %.1f", tHol)
+		}
+		if tComp > 0 {
+			text += fmt.Sprintf("\nComp: %.1f", tComp)
+		}
+		if tOther > 0 {
+			text += fmt.Sprintf("\nOth: %.1f", tOther)
+		}
 	}
 
 	if otHours > 0 {
@@ -344,9 +360,9 @@ func (c *CalendarPage) saveData() {
 		entries[dateStr] = data
 		totalWorked += data.HoursWorked
 	}
-	
-	log.Printf("DEBUG: Saving Timesheet -> Month: %d, Year: %d, Total Entries: %d, Total Hours: %.2f\n", 
-        int(c.CurrentDate.Month()), c.CurrentDate.Year(), len(entries), totalWorked)
+
+	log.Printf("DEBUG: Saving Timesheet -> Month: %d, Year: %d, Total Entries: %d, Total Hours: %.2f\n",
+		int(c.CurrentDate.Month()), c.CurrentDate.Year(), len(entries), totalWorked)
 
 	ts := models.Timesheet{
 		Month:       int(c.CurrentDate.Month()),
@@ -363,7 +379,7 @@ func (c *CalendarPage) saveData() {
 	log.Println("DEBUG: Save SUCCESS")
 }
 
-func (c *CalendarPage)makeFixedContainer(obj fyne.CanvasObject) fyne.CanvasObject {
+func (c *CalendarPage) makeFixedContainer(obj fyne.CanvasObject) fyne.CanvasObject {
 	// Create transparent spacer
 	spacer := canvas.NewRectangle(color.Transparent)
 	spacer.SetMinSize(fyne.NewSize(StatsColumnWidth, 10))
