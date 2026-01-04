@@ -31,14 +31,14 @@ type DayCell struct {
 	OtherEntry    *widget.Entry
 }
 
-func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType) *DayCell {
+func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType, onChanged func()) *DayCell {
 	//Initialize cell
 	cell := &DayCell{
 		DateStr: data.Date,
 	}
 
 	// Generalized input (hurs worked that date)
-	cell.WorkedEntry = makeEntry(data.HoursWorked)
+	cell.WorkedEntry = makeEntry(data.HoursWorked, onChanged)
 
 	//Label for day number
 	dayLabel := widget.NewLabelWithStyle(fmt.Sprintf("%d", dayNum), fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
@@ -47,11 +47,11 @@ func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType)
 
 	// Full time inputs (accordion inputs for cleaner layout)
 	if empType == models.TypeFullTime {
-		cell.SickEntry = makeEntry(data.SickLeave)
-		cell.VacationEntry = makeEntry(data.Vacation)
-		cell.HolidayEntry = makeEntry(data.Holiday)
-		cell.CompEntry = makeEntry(data.CompTimeTaken)
-		cell.OtherEntry = makeEntry(data.OtherPaid)
+		cell.SickEntry = makeEntry(data.SickLeave, onChanged)
+		cell.VacationEntry = makeEntry(data.Vacation, onChanged)
+		cell.HolidayEntry = makeEntry(data.Holiday, onChanged)
+		cell.CompEntry = makeEntry(data.CompTimeTaken, onChanged)
+		cell.OtherEntry = makeEntry(data.OtherPaid, onChanged)
 
 		//Create extras container
 		cell.ExtrasContainer = container.NewVBox(
@@ -98,12 +98,19 @@ func inputRow(label string, entry *widget.Entry) fyne.CanvasObject {
 }
 
 // Create new day entry with data provided for cell
-func makeEntry(val float64) *widget.Entry {
+func makeEntry(val float64, onChanged func()) *widget.Entry {
 	entry := widget.NewEntry()
 	entry.SetPlaceHolder("0.0")
 	//Cell not empty
 	if val > 0 {
 		entry.SetText(fmt.Sprintf("%.1f", val))
+	}
+
+	//Hook onChange to Fyne's event listener
+	entry.OnChanged = func(s string) {
+		if onChanged != nil {
+			onChanged()
+		}
 	}
 
 	return entry

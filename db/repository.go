@@ -31,7 +31,7 @@ func NewRepository(dbFolder string) (*Repository, error) {
 
 	//Timesheet table. Daily entries stored as JSON blob.
 	timesheetQuery := `
-	CREATE TABLE IF NOT EXISTS timesheet (
+	CREATE TABLE IF NOT EXISTS timesheets (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		month INTEGER,
 		year INTEGER,
