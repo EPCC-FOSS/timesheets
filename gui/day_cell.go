@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"strconv"
+
 	//"strconv"
 
 	"calendar_utility_node_for_timesheets/models"
@@ -53,13 +54,13 @@ func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType,
 		cell.CompEntry = makeEntry(data.CompTimeTaken, onChanged)
 		cell.OtherEntry = makeEntry(data.OtherPaid, onChanged)
 
-		//Create extras container
+		//Create extras container with grid for alignment
 		cell.ExtrasContainer = container.NewVBox(
-			inputRow("Sick", cell.SickEntry),
-			inputRow("Vac", cell.VacationEntry),
-			inputRow("Hol", cell.HolidayEntry),
-			inputRow("Comp", cell.CompEntry),
-			inputRow("Oth", cell.OtherEntry),
+			inputRowGrid("Sick:", cell.SickEntry),
+			inputRowGrid("Vac:", cell.VacationEntry),
+			inputRowGrid("Hol:", cell.HolidayEntry),
+			inputRowGrid("Comp:", cell.CompEntry),
+			inputRowGrid("Other:", cell.OtherEntry),
 		)
 		cell.ExtrasContainer.Hide() //HIDE ft button
 
@@ -95,6 +96,13 @@ func NewDayCell(dayNum int, data models.DailyEntry, empType models.EmployeeType,
 // Create row container
 func inputRow(label string, entry *widget.Entry) fyne.CanvasObject {
 	return container.NewBorder(nil, nil, widget.NewLabel(label), nil, entry)
+}
+
+// Create row container with grid for better alignment
+func inputRowGrid(label string, entry *widget.Entry) fyne.CanvasObject {
+	labelWidget := widget.NewLabel(label)
+	labelWidget.Alignment = fyne.TextAlignTrailing
+	return container.NewGridWithColumns(2, labelWidget, entry)
 }
 
 // Create new day entry with data provided for cell
