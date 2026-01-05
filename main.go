@@ -15,6 +15,10 @@ import (
 
 func main() {
 	myApp := app.New()
+
+	// Apply custom theme
+	myApp.Settings().SetTheme(&gui.CustomTheme{})
+
 	myWindow := myApp.NewWindow("Calendar Utility Node for Timesheets")
 
 	//DB SETUP

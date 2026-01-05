@@ -30,13 +30,21 @@ type ProfilePage struct {
 	Window fyne.Window
 
 	// Form widgets
-	FirstName *widget.Entry
-	LastName  *widget.Entry
-	Middle    *widget.Entry
-	EmpID     *widget.Entry
-	Dept      *widget.Entry
-	Title     *widget.Entry
-	Rate      *widget.Entry
+	FirstName   *widget.Entry
+	LastName    *widget.Entry
+	Middle      *widget.Entry
+	EmpID       *widget.Entry
+	PositionNum *widget.Entry
+	Dept        *widget.Entry
+	Title       *widget.Entry
+	Rate        *widget.Entry
+	Location    *widget.Entry
+
+	// Supervisor and contact information
+	SupervisorName  *widget.Entry
+	SupervisorPhone *widget.Entry
+	EmployeePhone   *widget.Entry
+	OfficePhone     *widget.Entry
 
 	//Dynamic fields
 	ExtraGroup *fyne.Container
@@ -92,12 +100,26 @@ func (p *ProfilePage) initWidgets() {
 	p.Middle = widget.NewEntry()
 	p.EmpID = widget.NewEntry()
 	p.EmpID.SetPlaceHolder("888888888")
+	p.PositionNum = widget.NewEntry()
+	p.PositionNum.SetPlaceHolder("12345")
 	p.Dept = widget.NewEntry()
 	p.Dept.SetPlaceHolder("Student Success")
 	p.Title = widget.NewEntry()
 	p.Title.SetPlaceHolder("Tutor")
 	p.Rate = widget.NewEntry()
 	p.Rate.SetPlaceHolder("9.67")
+	p.Location = widget.NewEntry()
+	p.Location.SetPlaceHolder("Main Campus")
+
+	// Supervisor and contact fields
+	p.SupervisorName = widget.NewEntry()
+	p.SupervisorName.SetPlaceHolder("Jane Smith")
+	p.SupervisorPhone = widget.NewEntry()
+	p.SupervisorPhone.SetPlaceHolder("(555) 123-4567")
+	p.EmployeePhone = widget.NewEntry()
+	p.EmployeePhone.SetPlaceHolder("(555) 987-6543")
+	p.OfficePhone = widget.NewEntry()
+	p.OfficePhone.SetPlaceHolder("(555) 111-2222")
 
 	//Extra fields
 	p.Fund = widget.NewEntry()
@@ -183,6 +205,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 		widget.NewFormItem("Last Name", p.LastName),
 		widget.NewFormItem("Middle Initial", p.Middle),
 		widget.NewFormItem("Employee ID", p.EmpID),
+		widget.NewFormItem("Position Number", p.PositionNum),
 	)
 	personalCard := widget.NewCard("Personal Information", "", personalForm)
 
@@ -190,6 +213,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 	jobForm := widget.NewForm(
 		widget.NewFormItem("Department", p.Dept),
 		widget.NewFormItem("Title", p.Title),
+		widget.NewFormItem("Location", p.Location),
 	)
 
 	rateTypeGrid := container.NewGridWithColumns(2,
@@ -216,6 +240,15 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 
 	scheduleCard := widget.NewCard("Standard Schedule", "(e.g. 09:00-17:00, 10:00-15:00)", scheduleForm)
 
+	// Supervisor and contact information
+	supervisorContactForm := widget.NewForm(
+		widget.NewFormItem("Supervisor Name", p.SupervisorName),
+		widget.NewFormItem("Supervisor Phone", p.SupervisorPhone),
+		widget.NewFormItem("Employee Phone", p.EmployeePhone),
+		widget.NewFormItem("Office/Dept Phone", p.OfficePhone),
+	)
+	supervisorCard := widget.NewCard("Supervisor & Contact Information", "", supervisorContactForm)
+
 	// Buttons
 	mainButtons := container.NewGridWithColumns(2, p.SaveButton, p.EditButton)
 	importExportButtons := container.NewGridWithColumns(2, p.ExportButton, p.ImportButton)
@@ -226,6 +259,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 		personalCard,
 		jobCard,
 		scheduleCard,
+		supervisorCard,
 		layoutSpacer(10),
 		buttonRow,
 	)
@@ -254,9 +288,17 @@ func (p *ProfilePage) LoadData() {
 	p.LastName.SetText(profile.LastName)
 	p.Middle.SetText(profile.MiddleInitial)
 	p.EmpID.SetText(profile.EmployeeID)
+	p.PositionNum.SetText(profile.PositionNum)
 	p.Dept.SetText(profile.Department)
 	p.Title.SetText(profile.Title)
 	p.Rate.SetText(fmt.Sprintf("%.2f", profile.Rate))
+	p.Location.SetText(profile.Location)
+
+	// Supervisor and contact info
+	p.SupervisorName.SetText(profile.SupervisorName)
+	p.SupervisorPhone.SetText(profile.SupervisorPhone)
+	p.EmployeePhone.SetText(profile.EmployeePhone)
+	p.OfficePhone.SetText(profile.OfficePhone)
 
 	p.TypeSelect.SetSelected(string(profile.Type))
 
@@ -337,14 +379,20 @@ func (p *ProfilePage) saveData() {
 
 	// Create profile model
 	prof := models.Profile{
-		FirstName:     p.FirstName.Text,
-		LastName:      p.LastName.Text,
-		MiddleInitial: p.Middle.Text,
-		EmployeeID:    p.EmpID.Text,
-		Department:    p.Dept.Text,
-		Title:         p.Title.Text,
-		Rate:          rate,
-		Type:          models.EmployeeType(p.TypeSelect.Selected),
+		FirstName:       p.FirstName.Text,
+		LastName:        p.LastName.Text,
+		MiddleInitial:   p.Middle.Text,
+		EmployeeID:      p.EmpID.Text,
+		PositionNum:     p.PositionNum.Text,
+		Department:      p.Dept.Text,
+		Title:           p.Title.Text,
+		Rate:            rate,
+		Location:        p.Location.Text,
+		Type:            models.EmployeeType(p.TypeSelect.Selected),
+		SupervisorName:  p.SupervisorName.Text,
+		SupervisorPhone: p.SupervisorPhone.Text,
+		EmployeePhone:   p.EmployeePhone.Text,
+		OfficePhone:     p.OfficePhone.Text,
 		PrimaryAccounting: models.AccountingCodes{
 			Fund:         p.Fund.Text,
 			Organization: p.Org.Text,
@@ -393,10 +441,16 @@ func (p *ProfilePage) lockForm() {
 	p.LastName.Disable()
 	p.Middle.Disable()
 	p.EmpID.Disable()
+	p.PositionNum.Disable()
 	p.Dept.Disable()
 	p.Title.Disable()
 	p.Rate.Disable()
+	p.Location.Disable()
 	p.TypeSelect.Disable()
+	p.SupervisorName.Disable()
+	p.SupervisorPhone.Disable()
+	p.EmployeePhone.Disable()
+	p.OfficePhone.Disable()
 	p.Fund.Disable()
 	p.Org.Disable()
 	p.Acct.Disable()
@@ -556,10 +610,16 @@ func (p *ProfilePage) unlockForm() {
 	p.LastName.Enable()
 	p.Middle.Enable()
 	p.EmpID.Enable()
+	p.PositionNum.Enable()
 	p.Dept.Enable()
 	p.Title.Enable()
 	p.Rate.Enable()
+	p.Location.Enable()
 	p.TypeSelect.Enable()
+	p.SupervisorName.Enable()
+	p.SupervisorPhone.Enable()
+	p.EmployeePhone.Enable()
+	p.OfficePhone.Enable()
 	p.Fund.Enable()
 	p.Org.Enable()
 	p.Acct.Enable()
