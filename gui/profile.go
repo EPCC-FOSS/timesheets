@@ -1,20 +1,29 @@
 package gui
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"calendar_utility_node_for_timesheets/db"
 	"calendar_utility_node_for_timesheets/models"
 
+	"image/color"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
 )
+
+// ProfileExport combines profile and timesheets for export/import
+type ProfileExport struct {
+	Profile    models.Profile     `json:"profile"`
+	Timesheets []models.Timesheet `json:"timesheets"`
+}
 
 type ProfilePage struct {
 	Repo   *db.Repository
@@ -36,6 +45,14 @@ type ProfilePage struct {
 	Acct       *widget.Entry
 	Prog       *widget.Entry
 
+	// Secondary accounting fields (for part-time employees)
+	SecondaryGroup *fyne.Container
+	Fund2          *widget.Entry
+	Org2           *widget.Entry
+	Acct2          *widget.Entry
+	Prog2          *widget.Entry
+	Rate2          *widget.Entry
+
 	//Type selector
 	TypeSelect *widget.Select
 
@@ -43,8 +60,10 @@ type ProfilePage struct {
 	ScheduleInputs map[int]*widget.Entry
 
 	//State buttons
-	SaveButton *widget.Button
-	EditButton *widget.Button
+	SaveButton   *widget.Button
+	EditButton   *widget.Button
+	ExportButton *widget.Button
+	ImportButton *widget.Button
 
 	//Locking logic
 	IsLocked bool
@@ -86,8 +105,17 @@ func (p *ProfilePage) initWidgets() {
 	p.Acct = widget.NewEntry()
 	p.Prog = widget.NewEntry()
 
+	// Secondary accounting fields
+	p.Fund2 = widget.NewEntry()
+	p.Org2 = widget.NewEntry()
+	p.Acct2 = widget.NewEntry()
+	p.Prog2 = widget.NewEntry()
+	p.Rate2 = widget.NewEntry()
+	p.Rate2.SetPlaceHolder("Optional")
+
 	// Ensure ExtraGroup is initialized so callbacks can safely Show/Hide it
 	p.ExtraGroup = container.NewVBox(
+		widget.NewLabel("Primary Accounting"),
 		widget.NewForm(
 			widget.NewFormItem("Fund", p.Fund),
 			widget.NewFormItem("Org", p.Org),
@@ -97,17 +125,36 @@ func (p *ProfilePage) initWidgets() {
 	)
 	p.ExtraGroup.Hide()
 
+	// Secondary accounting group for part-time employees
+	p.SecondaryGroup = container.NewVBox(
+		widget.NewLabel("Secondary Accounting (Optional)"),
+		widget.NewForm(
+			widget.NewFormItem("Fund", p.Fund2),
+			widget.NewFormItem("Org", p.Org2),
+			widget.NewFormItem("Account", p.Acct2),
+			widget.NewFormItem("Program", p.Prog2),
+			widget.NewFormItem("Hourly Rate", p.Rate2),
+		),
+	)
+	p.SecondaryGroup.Hide()
+
 	//Dropdown logic
 	p.TypeSelect = widget.NewSelect([]string{
 		string(models.TypeFullTime),
 		string(models.TypePartTime),
 		string(models.TypeWorkStudy),
 	}, func(selected string) {
-		// Show extra fields for pt  and ft
+		// Show extra fields for pt and ft
 		if selected == string(models.TypeWorkStudy) {
 			p.ExtraGroup.Hide()
-		} else {
+			p.SecondaryGroup.Hide()
+		} else if selected == string(models.TypePartTime) {
 			p.ExtraGroup.Show()
+			p.SecondaryGroup.Show()
+		} else {
+			// Full-Time
+			p.ExtraGroup.Show()
+			p.SecondaryGroup.Hide()
 		}
 	})
 
@@ -124,6 +171,8 @@ func (p *ProfilePage) initWidgets() {
 	p.SaveButton.Importance = widget.HighImportance
 	p.EditButton = widget.NewButtonWithIcon("Edit Profile", theme.DocumentCreateIcon(), p.unlockForm)
 	p.EditButton.Disable()
+	p.ExportButton = widget.NewButtonWithIcon("Export", theme.DownloadIcon(), p.exportProfile)
+	p.ImportButton = widget.NewButtonWithIcon("Import", theme.UploadIcon(), p.importProfile)
 }
 
 func (p *ProfilePage) BuildUI() fyne.CanvasObject {
@@ -153,6 +202,7 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 		rateTypeGrid,
 		widget.NewSeparator(),
 		p.ExtraGroup,
+		p.SecondaryGroup,
 	))
 
 	//Schedule form
@@ -167,7 +217,9 @@ func (p *ProfilePage) BuildUI() fyne.CanvasObject {
 	scheduleCard := widget.NewCard("Standard Schedule", "(e.g. 09:00-17:00, 10:00-15:00)", scheduleForm)
 
 	// Buttons
-	buttonRow := container.NewGridWithColumns(2, p.SaveButton, p.EditButton)
+	mainButtons := container.NewGridWithColumns(2, p.SaveButton, p.EditButton)
+	importExportButtons := container.NewGridWithColumns(2, p.ExportButton, p.ImportButton)
+	buttonRow := container.NewVBox(mainButtons, importExportButtons)
 
 	// Assembled layout for profile
 	content := container.NewVBox(
@@ -208,11 +260,22 @@ func (p *ProfilePage) LoadData() {
 
 	p.TypeSelect.SetSelected(string(profile.Type))
 
-	// Populate extra fields
-	p.Fund.SetText(profile.Fund)
-	p.Org.SetText(profile.Org)
-	p.Acct.SetText(profile.Acct)
-	p.Prog.SetText(profile.Prog)
+	// Populate primary accounting fields
+	p.Fund.SetText(profile.PrimaryAccounting.Fund)
+	p.Org.SetText(profile.PrimaryAccounting.Organization)
+	p.Acct.SetText(profile.PrimaryAccounting.Account)
+	p.Prog.SetText(profile.PrimaryAccounting.Program)
+
+	// Populate secondary accounting fields if they exist
+	if profile.SecondaryAccounting != nil {
+		p.Fund2.SetText(profile.SecondaryAccounting.Fund)
+		p.Org2.SetText(profile.SecondaryAccounting.Organization)
+		p.Acct2.SetText(profile.SecondaryAccounting.Account)
+		p.Prog2.SetText(profile.SecondaryAccounting.Program)
+		if profile.SecondaryAccounting.HourlyRate > 0 {
+			p.Rate2.SetText(fmt.Sprintf("%.2f", profile.SecondaryAccounting.HourlyRate))
+		}
+	}
 
 	// Populate schedule
 	for dayIdx, schedule := range profile.Schedule {
@@ -266,6 +329,12 @@ func (p *ProfilePage) saveData() {
 		}
 	}
 
+	// Parse secondary accounting rate if provided
+	var rate2 float64
+	if p.Rate2.Text != "" {
+		fmt.Sscanf(p.Rate2.Text, "%f", &rate2)
+	}
+
 	// Create profile model
 	prof := models.Profile{
 		FirstName:     p.FirstName.Text,
@@ -276,11 +345,24 @@ func (p *ProfilePage) saveData() {
 		Title:         p.Title.Text,
 		Rate:          rate,
 		Type:          models.EmployeeType(p.TypeSelect.Selected),
-		Fund:          p.Fund.Text,
-		Org:           p.Org.Text,
-		Acct:          p.Acct.Text,
-		Prog:          p.Prog.Text,
-		Schedule:      scheduleMap,
+		PrimaryAccounting: models.AccountingCodes{
+			Fund:         p.Fund.Text,
+			Organization: p.Org.Text,
+			Account:      p.Acct.Text,
+			Program:      p.Prog.Text,
+		},
+		Schedule: scheduleMap,
+	}
+
+	// Add secondary accounting if any field is filled (for part-time)
+	if p.Fund2.Text != "" || p.Org2.Text != "" || p.Acct2.Text != "" || p.Prog2.Text != "" {
+		prof.SecondaryAccounting = &models.AccountingCodes{
+			Fund:         p.Fund2.Text,
+			Organization: p.Org2.Text,
+			Account:      p.Acct2.Text,
+			Program:      p.Prog2.Text,
+			HourlyRate:   rate2,
+		}
 	}
 
 	// Error saving data
@@ -319,10 +401,146 @@ func (p *ProfilePage) lockForm() {
 	p.Org.Disable()
 	p.Acct.Disable()
 	p.Prog.Disable()
+	p.Fund2.Disable()
+	p.Org2.Disable()
+	p.Acct2.Disable()
+	p.Prog2.Disable()
+	p.Rate2.Disable()
 
 	for _, entry := range p.ScheduleInputs {
 		entry.Disable()
 	}
+}
+
+func (p *ProfilePage) exportProfile() {
+	profile, err := p.Repo.GetProfile()
+	if err != nil {
+		dialog.ShowError(err, p.Window)
+		return
+	}
+	if profile == nil {
+		dialog.ShowInformation("No Profile", "No profile data to export", p.Window)
+		return
+	}
+
+	// Get all timesheets
+	timesheets, err := p.Repo.GetTimesheets()
+	if err != nil {
+		dialog.ShowError(err, p.Window)
+		return
+	}
+
+	// Create combined export structure
+	exportData := ProfileExport{
+		Profile:    *profile,
+		Timesheets: timesheets,
+	}
+
+	// Create save dialog with default filename and JSON filter
+	saveDialog := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, p.Window)
+			return
+		}
+		if writer == nil {
+			return // User cancelled
+		}
+		defer writer.Close()
+
+		// Marshal combined data to JSON with indentation for readability
+		data, err := json.MarshalIndent(exportData, "", "  ")
+		if err != nil {
+			dialog.ShowError(err, p.Window)
+			return
+		}
+
+		// Write to file
+		if _, err := writer.Write(data); err != nil {
+			dialog.ShowError(err, p.Window)
+			return
+		}
+
+		dialog.ShowInformation("Success", "Profile and timesheets exported successfully", p.Window)
+	}, p.Window)
+
+	// Set default filename and file filter
+	saveDialog.SetFileName("profile.json")
+	saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+	saveDialog.Show()
+}
+
+func (p *ProfilePage) importProfile() {
+	openDialog := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, p.Window)
+			return
+		}
+		if reader == nil {
+			return // User cancelled
+		}
+		defer reader.Close()
+
+		// Read file contents
+		data := make([]byte, 0)
+		buf := make([]byte, 1024)
+		for {
+			n, err := reader.Read(buf)
+			if n > 0 {
+				data = append(data, buf[:n]...)
+			}
+			if err != nil {
+				break
+			}
+		}
+
+		// Try to unmarshal as ProfileExport first (new format)
+		var exportData ProfileExport
+		if err := json.Unmarshal(data, &exportData); err == nil && exportData.Profile.EmployeeID != "" {
+			// New format with timesheets
+			// Save imported profile
+			if err := p.Repo.SaveProfile(&exportData.Profile); err != nil {
+				dialog.ShowError(err, p.Window)
+				return
+			}
+
+			// Save imported timesheets
+			for _, timesheet := range exportData.Timesheets {
+				if err := p.Repo.SaveTimesheet(timesheet); err != nil {
+					dialog.ShowError(fmt.Errorf("error importing timesheet: %w", err), p.Window)
+					// Continue importing other timesheets
+				}
+			}
+
+			dialog.ShowInformation("Success", fmt.Sprintf("Profile and %d timesheet(s) imported successfully", len(exportData.Timesheets)), p.Window)
+		} else {
+			// Try old format (profile only)
+			var profile models.Profile
+			if err := json.Unmarshal(data, &profile); err != nil {
+				dialog.ShowError(fmt.Errorf("invalid profile file: %w", err), p.Window)
+				return
+			}
+
+			// Save imported profile
+			if err := p.Repo.SaveProfile(&profile); err != nil {
+				dialog.ShowError(err, p.Window)
+				return
+			}
+
+			dialog.ShowInformation("Success", "Profile imported successfully", p.Window)
+		}
+
+		// Reload data to display
+		p.LoadData()
+
+		// Trigger callback for calendar update
+		if p.OnSaved != nil {
+			p.OnSaved()
+		}
+	}, p.Window)
+
+	// Set file filter to JSON only
+	openDialog.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+	openDialog.Show()
 }
 
 func (p *ProfilePage) unlockForm() {
@@ -346,6 +564,11 @@ func (p *ProfilePage) unlockForm() {
 	p.Org.Enable()
 	p.Acct.Enable()
 	p.Prog.Enable()
+	p.Fund2.Enable()
+	p.Org2.Enable()
+	p.Acct2.Enable()
+	p.Prog2.Enable()
+	p.Rate2.Enable()
 
 	// Schedule fields
 	for _, entry := range p.ScheduleInputs {
