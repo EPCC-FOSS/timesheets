@@ -322,19 +322,27 @@ func (c *CalendarPage) Refresh() {
 
 // createMetricBox creates a compact purple box with rounded corners for a metric
 func (c *CalendarPage) createMetricBox(title string, valueLabel *widget.Label) fyne.CanvasObject {
-	titleLabel := widget.NewLabelWithStyle(title, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	titleText := canvas.NewText(title, color.White)
+	titleText.Alignment = fyne.TextAlignCenter
+	titleText.TextStyle = fyne.TextStyle{Bold: true}
+	titleText.TextSize = 11 // Smaller font size
+
+	valueText := canvas.NewText(valueLabel.Text, color.White)
+	valueText.Alignment = fyne.TextAlignCenter
+	valueText.TextStyle = fyne.TextStyle{Bold: true}
+	valueText.TextSize = 13 // Slightly larger for value but still compact
 
 	content := container.NewVBox(
-		titleLabel,
+		titleText,
 		valueLabel,
 	)
 
 	// Create a rounded rectangle background with purple color
 	bg := canvas.NewRectangle(color.NRGBA{R: 156, G: 39, B: 176, A: 255}) // Purple color
-	bg.CornerRadius = 10
-	bg.SetMinSize(fyne.NewSize(140, 60))
+	bg.CornerRadius = 8
+	bg.SetMinSize(fyne.NewSize(120, 35))
 
-	// Use smaller padding
+	// Use minimal padding with custom insets
 	paddedContent := container.NewPadded(content)
 
 	return container.NewStack(bg, paddedContent)
