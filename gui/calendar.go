@@ -8,11 +8,13 @@ import (
 
 	"calendar_utility_node_for_timesheets/db"
 	"calendar_utility_node_for_timesheets/models"
+	"calendar_utility_node_for_timesheets/pdfgen"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -612,5 +614,42 @@ func (c *CalendarPage) makeFixedContainer(obj fyne.CanvasObject) fyne.CanvasObje
 }
 
 func (c *CalendarPage) exportData() {
-	dialog.ShowInformation("Export", "Export functionality not implemented yet.", c.Window)
+	// First save current data
+	c.saveData()
+
+	// Get current timesheet
+	ts, err := c.Repo.GetTimesheetByDate(int(c.CurrentDate.Month()), c.CurrentDate.Year())
+	if err != nil {
+		dialog.ShowError(fmt.Errorf("failed to load timesheet: %v", err), c.Window)
+		return
+	}
+
+	// Show file save dialog
+	saveDialog := dialog.NewFileSave(func(uc fyne.URIWriteCloser, err error) {
+		if err != nil {
+			dialog.ShowError(err, c.Window)
+			return
+		}
+		if uc == nil {
+			return // User cancelled
+		}
+		defer uc.Close()
+
+		// Generate PDF
+		err = pdfgen.GenerateTimesheet(c.Profile, ts, uc.URI().Path())
+		if err != nil {
+			dialog.ShowError(fmt.Errorf("failed to generate PDF: %v", err), c.Window)
+			return
+		}
+
+		dialog.ShowInformation("Success", "PDF exported successfully!", c.Window)
+	}, c.Window)
+
+	// Set default filename
+	defaultName := fmt.Sprintf("timesheet_%s_%d.pdf",
+		c.CurrentDate.Format("January"),
+		c.CurrentDate.Year())
+	saveDialog.SetFileName(defaultName)
+	saveDialog.SetFilter(storage.NewExtensionFileFilter([]string{".pdf"}))
+	saveDialog.Show()
 }

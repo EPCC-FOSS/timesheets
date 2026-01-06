@@ -1,48 +1,23 @@
 package pdfgen
-/*
+
 import (
-	"fmt"
-	"os"
-	"time"
-
 	"calendar_utility_node_for_timesheets/models"
-
-	"github.com/johnfercher/maroto/color"
-	"github.com/johnfercher/maroto/consts"
-	"github.com/johnfercher/maroto/pdf"
-	"github.com/johnfercher/maroto/pkg/consts"
-	"github.com/johnfercher/maroto/pkg/pdf"
-	"github.com/johnfercher/maroto/props"
+	"fmt"
 )
 
-// Main entrypoint called by UI
-func GenerateTimesheet (p *models.Profile, ts *models.Timesheet, outputPath string) error {
-	// Init maroto
-	m := pdf.NewMaroto(consts.Portrait, consts.Letter)
-	m.setPageMargins(20,20,20)
-
-	// Build header
-	buildHeader(m, p, ts)
-
-	// Create layout based on profile
-	switch p.Type{
-	case models.TypeFullTime:
-		buildFullTimeTable(m, ts)
+// GenerateTimesheet is the main entry point called by UI
+func GenerateTimesheet(p *models.Profile, ts *models.Timesheet, outputPath string) error {
+	// Route to appropriate generator based on employee type
+	switch p.Type {
 	case models.TypePartTime:
-		buildPartTimeTable(m, ts)
+		return GeneratePartTimeTimesheet(p, ts, outputPath)
+	case models.TypeFullTime:
+		// TODO: Implement full-time timesheet generation
+		return fmt.Errorf("full-time timesheet generation not yet implemented")
 	case models.TypeWorkStudy:
-		buildWorkStudyTable(m, ts)
+		// TODO: Implement work-study timesheet generation
+		return fmt.Errorf("work-study timesheet generation not yet implemented")
+	default:
+		return fmt.Errorf("unknown employee type: %v", p.Type)
 	}
-
-	//Footer for signatures
-	buildFooter(m)
-
-	//Save
-	return m.OutputFileAndClose(outputPath)
 }
-
-//Create Header (shared header)
-func buildHeader(m pdf.Maroto, p *models.Profile, ts *models.Timesheet) {
-
-}
-*/
