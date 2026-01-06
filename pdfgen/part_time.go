@@ -122,167 +122,212 @@ func addPartTimeHeader(mrt core.Maroto, p *models.Profile, ts *models.Timesheet)
 }
 
 func addPartTimeEmployeeInfo(mrt core.Maroto, p *models.Profile) {
-	mrt.AddRow(5,
-		col.New(6).Add(
-			text.New(fmt.Sprintf("Name: %s %s %s", p.FirstName, p.MiddleInitial, p.LastName), props.Text{
-				Size: 9,
-			}),
+	// First row: Name and ID fields
+	mrt.AddRow(6,
+		col.New(3).Add(
+			text.New("LAST NAME", props.Text{Size: 8, Style: fontstyle.Bold}),
 		),
 		col.New(3).Add(
-			text.New(fmt.Sprintf("ID: %s", p.EmployeeID), props.Text{
-				Size: 9,
-			}),
+			text.New("FIRST NAME", props.Text{Size: 8, Style: fontstyle.Bold}),
 		),
-		col.New(3).Add(
-			text.New(fmt.Sprintf("Position: %s", p.PositionNum), props.Text{
-				Size: 9,
-			}),
+		col.New(2).Add(
+			text.New("MI", props.Text{Size: 8, Style: fontstyle.Bold}),
+		),
+		col.New(4).Add(
+			text.New("EMPLOYEE ID", props.Text{Size: 8, Style: fontstyle.Bold}),
 		),
 	)
 
 	mrt.AddRow(5,
-		col.New(6).Add(
-			text.New(fmt.Sprintf("Department: %s", p.Department), props.Text{
-				Size: 9,
-			}),
+		col.New(3).Add(
+			text.New(p.LastName, props.Text{Size: 9}),
 		),
-		col.New(6).Add(
-			text.New(fmt.Sprintf("Title: %s", p.Title), props.Text{
-				Size: 9,
-			}),
+		col.New(3).Add(
+			text.New(p.FirstName, props.Text{Size: 9}),
+		),
+		col.New(2).Add(
+			text.New(p.MiddleInitial, props.Text{Size: 9}),
+		),
+		col.New(4).Add(
+			text.New(p.EmployeeID, props.Text{Size: 9}),
 		),
 	)
 
-	mrt.AddRow(2, line.NewCol(12))
+	// Second row: Department and Position
+	mrt.AddRow(6,
+		col.New(8).Add(
+			text.New(fmt.Sprintf("DEPARTMENT: %s", p.Department), props.Text{Size: 9}),
+		),
+		col.New(4).Add(
+			text.New(fmt.Sprintf("POSITION NO: %s", p.PositionNum), props.Text{Size: 9}),
+		),
+	)
+
+	// Primary accounting row
+	mrt.AddRow(6,
+		col.New(2).Add(
+			text.New(fmt.Sprintf("FUND: %s", p.PrimaryAccounting.Fund), props.Text{Size: 8}),
+		),
+		col.New(2).Add(
+			text.New(fmt.Sprintf("ORG: %s", p.PrimaryAccounting.Organization), props.Text{Size: 8}),
+		),
+		col.New(2).Add(
+			text.New(fmt.Sprintf("ACCT: %s", p.PrimaryAccounting.Account), props.Text{Size: 8}),
+		),
+		col.New(2).Add(
+			text.New(fmt.Sprintf("PROG: %s", p.PrimaryAccounting.Program), props.Text{Size: 8}),
+		),
+		col.New(4).Add(
+			text.New(fmt.Sprintf("HOURLY RATE: $%.2f", p.Rate), props.Text{Size: 8}),
+		),
+	)
+
+	// Secondary accounting row if exists
+	if p.SecondaryAccounting != nil {
+		mrt.AddRow(6,
+			col.New(2).Add(
+				text.New(fmt.Sprintf("FUND: %s", p.SecondaryAccounting.Fund), props.Text{Size: 8}),
+			),
+			col.New(2).Add(
+				text.New(fmt.Sprintf("ORG: %s", p.SecondaryAccounting.Organization), props.Text{Size: 8}),
+			),
+			col.New(2).Add(
+				text.New(fmt.Sprintf("ACCT: %s", p.SecondaryAccounting.Account), props.Text{Size: 8}),
+			),
+			col.New(2).Add(
+				text.New(fmt.Sprintf("PROG: %s", p.SecondaryAccounting.Program), props.Text{Size: 8}),
+			),
+			col.New(4),
+		)
+	}
 }
 
 func addPartTimeTable(mrt core.Maroto, p *models.Profile, ts *models.Timesheet) {
-	// Table header
-	mrt.AddRow(6,
-		col.New(2).Add(text.New("Date", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New("Day", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New("Hours Worked", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New("Overtime", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New("Total", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New("Weekly Total", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
+	// Table header - "WEEK" and "NUMBER OF HOURS" sections
+	mrt.AddRow(5,
+		col.New(3).Add(
+			text.New("WEEK", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center}),
+		),
+		col.New(9).Add(
+			text.New("NUMBER OF HOURS", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center}),
+		),
+	)
+
+	// Column headers
+	mrt.AddRow(5,
+		col.New(1).Add(text.New("FROM", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("TO", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("M", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("T", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("W", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("TH", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("F", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("S", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("S", props.Text{Size: 7, Align: align.Center})),
+		col.New(2).Add(text.New("REG", props.Text{Size: 7, Align: align.Center})),
+		col.New(1).Add(text.New("TOTAL HOURS", props.Text{Size: 6, Align: align.Center})),
 	)
 
 	mrt.AddRow(1, line.NewCol(12))
 
-	// Get sorted dates
+	// Get weeks data
 	year, month := ts.Year, ts.Month
-	daysInMonth := time.Date(year, time.Month(month)+1, 0, 0, 0, 0, 0, time.Local).Day()
+	firstDay := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 
-	var weeklyRegular, weeklyOT float64
+	// Find the Monday of the first week
+	weekStart := firstDay
+	for weekStart.Weekday() != time.Monday {
+		weekStart = weekStart.AddDate(0, 0, -1)
+	}
 
 	threshold := p.Type.OvertimeThreshold()
+	var monthlyRegular, monthlyOT float64
 
-	for day := 1; day <= daysInMonth; day++ {
-		date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
-		dateStr := date.Format("2006-01-02")
-		dayName := date.Format("Mon")
-		weekday := int(date.Weekday())
+	// Generate up to 5 weeks
+	for weekNum := 0; weekNum < 5; weekNum++ {
+		weekEnd := weekStart.AddDate(0, 0, 6) // Sunday
 
-		// Track week start (Monday = 1)
-		if weekday == 1 || day == 1 {
-			weeklyRegular = 0
-			weeklyOT = 0
-		}
+		// Collect hours for each day of the week
+		dayHours := make([]float64, 7) // Mon-Sun
+		var weekTotal float64
 
-		entry, exists := ts.Entries[dateStr]
-		var hoursWorked, overtime, total float64
+		for dayOffset := 0; dayOffset < 7; dayOffset++ {
+			currentDay := weekStart.AddDate(0, 0, dayOffset)
 
-		if exists {
-			hoursWorked = entry.HoursWorked
-			weeklyRegular += hoursWorked
-		}
-
-		// Show weekly total on Sunday or last day
-		weeklyTotalStr := ""
-		if weekday == 0 || day == daysInMonth {
-			// Calculate overtime for the week
-			if weeklyRegular > threshold {
-				weeklyOT = weeklyRegular - threshold
-				weeklyRegular = threshold
+			// Only count if within current month
+			if currentDay.Month() == time.Month(month) && currentDay.Year() == year {
+				dateStr := currentDay.Format("2006-01-02")
+				if entry, exists := ts.Entries[dateStr]; exists {
+					dayHours[dayOffset] = entry.HoursWorked
+					weekTotal += entry.HoursWorked
+				}
 			}
-			weeklyTotalStr = fmt.Sprintf("%.2f", weeklyRegular+weeklyOT)
 		}
 
-		total = hoursWorked + overtime
+		// Calculate regular and OT for this week
+		var weekRegular, weekOT float64
+		if weekTotal > threshold {
+			weekOT = weekTotal - threshold
+			weekRegular = threshold
+		} else {
+			weekRegular = weekTotal
+		}
 
-		mrt.AddRow(5,
-			col.New(2).Add(text.New(date.Format("01/02/2006"), props.Text{Size: 8, Align: align.Center})),
-			col.New(2).Add(text.New(dayName, props.Text{Size: 8, Align: align.Center})),
-			col.New(2).Add(text.New(fmt.Sprintf("%.2f", hoursWorked), props.Text{Size: 8, Align: align.Center})),
-			col.New(2).Add(text.New(fmt.Sprintf("%.2f", overtime), props.Text{Size: 8, Align: align.Center})),
-			col.New(2).Add(text.New(fmt.Sprintf("%.2f", total), props.Text{Size: 8, Align: align.Center})),
-			col.New(2).Add(text.New(weeklyTotalStr, props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
+		monthlyRegular += weekRegular
+		monthlyOT += weekOT
+
+		// Helper to format hours (empty string if zero)
+		formatHours := func(hours float64) string {
+			if hours == 0 {
+				return ""
+			}
+			return fmt.Sprintf("%.2f", hours)
+		}
+
+		// Add week row
+		mrt.AddRow(7,
+			col.New(1).Add(text.New(weekStart.Format("01/02/06"), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(weekEnd.Format("01/02/06"), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[0]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[1]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[2]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[3]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[4]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[5]), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(dayHours[6]), props.Text{Size: 7, Align: align.Center})),
+			col.New(2).Add(text.New(formatHours(weekRegular), props.Text{Size: 7, Align: align.Center})),
+			col.New(1).Add(text.New(formatHours(weekTotal), props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Center})),
 		)
+
+		// Move to next week
+		weekStart = weekStart.AddDate(0, 0, 7)
+
+		// Stop if we've gone past the month
+		if weekStart.Month() != time.Month(month) && weekStart.Day() > 7 {
+			break
+		}
 	}
 
 	mrt.AddRow(2, line.NewCol(12))
 
-	// Calculate monthly totals
-	var monthlyRegular, monthlyOT float64
-	currentWeek := []models.DailyEntry{}
-	firstOfMonth := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
-	startOffset := int(firstOfMonth.Weekday()) - 1
-	if startOffset < 0 {
-		startOffset = 6
-	}
-
-	for i := 0; i < startOffset; i++ {
-		currentWeek = append(currentWeek, models.DailyEntry{})
-	}
-
-	for day := 1; day <= daysInMonth; day++ {
-		date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.Local)
-		dateStr := date.Format("2006-01-02")
-
-		var entry models.DailyEntry
-		if e, ok := ts.Entries[dateStr]; ok {
-			entry = e
-		}
-
-		currentWeek = append(currentWeek, entry)
-
-		if len(currentWeek) == 7 {
-			var weekTotal float64
-			for _, e := range currentWeek {
-				weekTotal += e.HoursWorked
-			}
-			if weekTotal > threshold {
-				monthlyOT += weekTotal - threshold
-				monthlyRegular += threshold
-			} else {
-				monthlyRegular += weekTotal
-			}
-			currentWeek = []models.DailyEntry{}
-		}
-	}
-
-	// Handle partial week
-	if len(currentWeek) > 0 {
-		var weekTotal float64
-		for _, e := range currentWeek {
-			weekTotal += e.HoursWorked
-		}
-		if weekTotal > threshold {
-			monthlyOT += weekTotal - threshold
-			monthlyRegular += threshold
-		} else {
-			monthlyRegular += weekTotal
-		}
-	}
+	// Note about rounding
+	mrt.AddRow(4,
+		col.New(9).Add(
+			text.New("Round off hours worked to the nearest quarter hour; ¼ hr = .25; ½ hr. = .50; ¾ hr. = .75; 1 hr. = 1", props.Text{Size: 7}),
+		),
+		col.New(3).Add(
+			text.New("TOTAL HOURS", props.Text{Size: 8, Style: fontstyle.Bold, Align: align.Right}),
+		),
+	)
 
 	monthlyTotal := monthlyRegular + monthlyOT
 
-	// Monthly totals row
+	// Monthly total
 	mrt.AddRow(6,
-		col.New(6).Add(text.New("MONTHLY TOTALS:", props.Text{Size: 9, Style: fontstyle.Bold, Align: align.Right})),
-		col.New(2).Add(text.New(fmt.Sprintf("%.2f", monthlyRegular), props.Text{Size: 9, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New(fmt.Sprintf("%.2f", monthlyOT), props.Text{Size: 9, Style: fontstyle.Bold, Align: align.Center})),
-		col.New(2).Add(text.New(fmt.Sprintf("%.2f", monthlyTotal), props.Text{Size: 9, Style: fontstyle.Bold, Align: align.Center})),
+		col.New(9),
+		col.New(3).Add(
+			text.New(fmt.Sprintf("%.2f", monthlyTotal), props.Text{Size: 12, Style: fontstyle.Bold, Align: align.Center}),
+		),
 	)
 }
 
@@ -328,33 +373,58 @@ func addPartTimeAccounting(mrt core.Maroto, p *models.Profile) {
 func addPartTimeSignatures(mrt core.Maroto, p *models.Profile) {
 	mrt.AddRow(3)
 
-	mrt.AddRow(8,
-		col.New(6).Add(
-			text.New("_________________________________", props.Text{Size: 9, Top: 6}),
-			text.New("Employee Signature", props.Text{Size: 8}),
-		),
-		col.New(6).Add(
-			text.New("_________________________________", props.Text{Size: 9, Top: 6}),
-			text.New("Date", props.Text{Size: 8}),
-		),
-	)
-
-	mrt.AddRow(3)
-
-	mrt.AddRow(8,
-		col.New(6).Add(
-			text.New("_________________________________", props.Text{Size: 9, Top: 6}),
-			text.New(fmt.Sprintf("Supervisor: %s", p.SupervisorName), props.Text{Size: 8}),
-		),
-		col.New(6).Add(
-			text.New("_________________________________", props.Text{Size: 9, Top: 6}),
-			text.New("Date", props.Text{Size: 8}),
-		),
-	)
-
-	mrt.AddRow(5,
+	mrt.AddRow(4,
 		col.New(12).Add(
-			text.New(fmt.Sprintf("Supervisor Phone: %s", p.SupervisorPhone), props.Text{Size: 8}),
+			text.New("I certify that the above time record is true and accurate.", props.Text{Size: 7}),
 		),
+	)
+
+	mrt.AddRow(2)
+
+	// Supervisor and Employee Signature labels
+	mrt.AddRow(5,
+		col.New(5).Add(text.New("Supervisor Signature:", props.Text{Size: 8})),
+		col.New(2).Add(text.New("Date:", props.Text{Size: 8})),
+		col.New(3).Add(text.New("Employee's Signature:", props.Text{Size: 8})),
+		col.New(2).Add(text.New("Date:", props.Text{Size: 8})),
+	)
+
+	// Signature lines
+	mrt.AddRow(1,
+		line.NewCol(5),
+		col.New(2),
+		line.NewCol(3),
+		col.New(2),
+	)
+
+	mrt.AddRow(1,
+		col.New(5),
+		line.NewCol(2),
+		col.New(3),
+		line.NewCol(2),
+	)
+
+	mrt.AddRow(2)
+
+	// Supervisor Print Name
+	mrt.AddRow(5,
+		col.New(6).Add(text.New("Supervisor Print Name:", props.Text{Size: 8})),
+	)
+
+	mrt.AddRow(1,
+		line.NewCol(6),
+	)
+
+	mrt.AddRow(2)
+
+	// Phone numbers
+	mrt.AddRow(5,
+		col.New(6).Add(text.New("Supervisor Office Phone Number:", props.Text{Size: 8})),
+		col.New(6).Add(text.New("Employee Office Phone Number:", props.Text{Size: 8})),
+	)
+
+	mrt.AddRow(1,
+		line.NewCol(6),
+		line.NewCol(6),
 	)
 }
